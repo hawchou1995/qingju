@@ -118,8 +118,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       // LDC/CDK provider 现在只 watch currentUser.username，
       // refreshSilently 不会再连带触发它们 rebuild，需要显式刷新
       final prefs = ref.read(sharedPreferencesProvider);
-      final ldcEnabled = prefs.getBool('ldc_enabled') ?? false;
-      final cdkEnabled = prefs.getBool('cdk_enabled') ?? false;
+      // 青橘没有 LDC/CDK 服务，避免任何原站专属请求。
+      final ldcEnabled = SiteIdentity.supportsLinuxDoServices &&
+          (prefs.getBool('ldc_enabled') ?? false);
+      final cdkEnabled = SiteIdentity.supportsLinuxDoServices &&
+          (prefs.getBool('cdk_enabled') ?? false);
       await Future.wait([
         ref.read(currentUserProvider.notifier).refreshSilently(force: true),
         ref.read(userSummaryProvider.notifier).refresh(),
