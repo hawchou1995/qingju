@@ -35,8 +35,9 @@ for candidate in "${CANDIDATES[@]}"; do
   fi
 
   echo "== ${candidate}" | tee -a "${REPORT_FILE}"
+  # ldd 对静态可执行文件返回非零；pipefail 下会误判为失败，这里显式容忍。
   LD_LIBRARY_PATH="${BUNDLE_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-    ldd "${candidate}" | tee -a "${REPORT_FILE}"
+    ldd "${candidate}" 2>&1 | tee -a "${REPORT_FILE}" || true
   echo | tee -a "${REPORT_FILE}"
 
   if LD_LIBRARY_PATH="${BUNDLE_LIB_DIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
