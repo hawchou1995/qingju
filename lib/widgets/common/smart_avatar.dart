@@ -43,7 +43,7 @@ class SmartAvatar extends StatefulWidget {
 /// 容器)都得调这个同一份判断，不然会出现"图是方的、外层裁切/边框还是圆
 /// 的"这种两层对不上的错位。
 final RegExp _avatarUsernamePattern = RegExp(r'/user_avatar/[^/]+/([^/]+)/');
-const Set<String> _squareAvatarUsernames = {'neo'};
+const Set<String> _squareAvatarUsernames = {};
 
 bool isSquareAvatarUrl(String? url) {
   if (url == null || url.isEmpty) return false;

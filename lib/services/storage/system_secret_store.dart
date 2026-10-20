@@ -13,7 +13,11 @@ class SystemSecretStore implements SecretStore {
     : _secureStorage =
           secureStorage ??
           const FlutterSecureStorage(
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+            iOptions: IOSOptions(accountName: 'me.qingju.client'),
+            mOptions: MacOsOptions(
+              accountName: 'me.qingju.client',
+              usesDataProtectionKeychain: false,
+            ),
           );
 
   static final SystemSecretStore instance = SystemSecretStore();

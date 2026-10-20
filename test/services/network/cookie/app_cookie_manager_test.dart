@@ -10,13 +10,13 @@ void main() {
   group('AppCookieManager.loadCookies', () {
     test('忽略 RequestOptions 上残留的旧 Cookie 头，始终使用 CookieJar 最新值', () async {
       final jar = CookieJar();
-      final uri = Uri.parse('https://linux.do/session/csrf');
+      final uri = Uri.parse('https://qingju.me/session/csrf');
       await jar.saveFromResponse(uri, [Cookie('_t', 'new-token')..path = '/']);
 
       final manager = AppCookieManager(jar);
       final options = RequestOptions(
         path: '/session/csrf',
-        baseUrl: 'https://linux.do',
+        baseUrl: 'https://qingju.me',
         method: 'GET',
         headers: {HttpHeaders.cookieHeader: '_t=old-token; other=legacy'},
       );
@@ -30,18 +30,18 @@ void main() {
 
     test('同名同 path 冲突时优先使用 host-only 会话 Cookie', () async {
       final jar = CookieJar();
-      final uri = Uri.parse('https://linux.do/session/csrf');
+      final uri = Uri.parse('https://qingju.me/session/csrf');
       await jar.saveFromResponse(uri, [
         Cookie('_t', 'host-token')..path = '/',
         Cookie('_t', 'domain-token')
-          ..domain = '.linux.do'
+          ..domain = '.qingju.me'
           ..path = '/',
       ]);
 
       final manager = AppCookieManager(jar);
       final options = RequestOptions(
         path: '/session/csrf',
-        baseUrl: 'https://linux.do',
+        baseUrl: 'https://qingju.me',
         method: 'GET',
       );
 
@@ -53,7 +53,7 @@ void main() {
 
     test('会话 Cookie 即使 path 不同也只发送主站根路径 winner', () async {
       final jar = CookieJar();
-      final uri = Uri.parse('https://linux.do/session/csrf');
+      final uri = Uri.parse('https://qingju.me/session/csrf');
       await jar.saveFromResponse(uri, [
         Cookie('_t', 'root-token')..path = '/',
         Cookie('_t', 'scoped-token')..path = '/session',
@@ -62,7 +62,7 @@ void main() {
       final manager = AppCookieManager(jar);
       final options = RequestOptions(
         path: '/session/csrf',
-        baseUrl: 'https://linux.do',
+        baseUrl: 'https://qingju.me',
         method: 'GET',
       );
 
@@ -74,9 +74,9 @@ void main() {
 
     test('会话 Cookie 的 domain 污染副本不会发送到子域名', () async {
       final jar = CookieJar();
-      await jar.saveFromResponse(Uri.parse('https://linux.do'), [
+      await jar.saveFromResponse(Uri.parse('https://qingju.me'), [
         Cookie('_t', 'polluted-token')
-          ..domain = '.linux.do'
+          ..domain = '.qingju.me'
           ..path = '/',
       ]);
 
@@ -94,7 +94,7 @@ void main() {
 
     test('非会话同名不同 path Cookie 仍按 RFC 同时发送', () async {
       final jar = CookieJar();
-      final uri = Uri.parse('https://linux.do/session/csrf');
+      final uri = Uri.parse('https://qingju.me/session/csrf');
       await jar.saveFromResponse(uri, [
         Cookie('theme', 'root')..path = '/',
         Cookie('theme', 'scoped')..path = '/session',
@@ -103,7 +103,7 @@ void main() {
       final manager = AppCookieManager(jar);
       final options = RequestOptions(
         path: '/session/csrf',
-        baseUrl: 'https://linux.do',
+        baseUrl: 'https://qingju.me',
         method: 'GET',
       );
 
@@ -118,13 +118,13 @@ void main() {
       // 兜底按过期时间取最新(后签发=当前有效),与值长度/插入顺序无关。
       final now = DateTime.now();
       final older = Cookie('cf_clearance', 'older-value')
-        ..domain = '.linux.do'
+        ..domain = '.qingju.me'
         ..path = '/'
         ..secure = true
         ..httpOnly = true
         ..expires = now.add(const Duration(hours: 1));
       final newer = Cookie('cf_clearance', 'newer-value')
-        ..domain = '.linux.do'
+        ..domain = '.qingju.me'
         ..path = '/'
         ..secure = true
         ..httpOnly = true
@@ -136,7 +136,7 @@ void main() {
       ]) {
         final selected = AppCookieManager.selectCookiesForTest(
           cookies,
-          Uri.parse('https://linux.do/topics/timings'),
+          Uri.parse('https://qingju.me/topics/timings'),
         );
         final clearance = selected.where((c) => c.name == 'cf_clearance');
         expect(clearance, hasLength(1));
@@ -149,13 +149,13 @@ void main() {
     test('CDK retry header 保留业务 domain cookie 且不带主站登录 cookie', () {
       final header = CookieJarService.buildCookieHeaderForRequest([
         Cookie('cf_clearance', 'cf-token')
-          ..domain = '.linux.do'
+          ..domain = '.qingju.me'
           ..path = '/',
         Cookie('linux_do_cdk_session_id', 'cdk-token')
-          ..domain = '.linux.do'
+          ..domain = '.qingju.me'
           ..path = '/',
         Cookie('_t', 'polluted-token')
-          ..domain = '.linux.do'
+          ..domain = '.qingju.me'
           ..path = '/',
       ], Uri.parse('https://cdk.linux.do/api/v1/oauth/user-info'));
 
@@ -167,11 +167,11 @@ void main() {
     test('cf_clearance 同名多枚时取过期最新那枚(取新兜底),与顺序无关', () {
       final now = DateTime.now();
       final older = Cookie('cf_clearance', 'older-value')
-        ..domain = '.linux.do'
+        ..domain = '.qingju.me'
         ..path = '/'
         ..expires = now.add(const Duration(hours: 1));
       final newer = Cookie('cf_clearance', 'newer-value')
-        ..domain = '.linux.do'
+        ..domain = '.qingju.me'
         ..path = '/'
         ..expires = now.add(const Duration(days: 30));
 
@@ -181,7 +181,7 @@ void main() {
       ]) {
         final header = CookieJarService.buildCookieHeaderForRequest(
           cookies,
-          Uri.parse('https://linux.do/topics/timings'),
+          Uri.parse('https://qingju.me/topics/timings'),
         );
         expect(header, contains('newer-value'));
         expect(header, isNot(contains('older-value')));

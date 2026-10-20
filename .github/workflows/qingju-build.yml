@@ -26,8 +26,6 @@ jobs:
             os: macos-15
           - platform: windows
             os: windows-2022
-          - platform: linux
-            os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
@@ -130,6 +128,28 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: qingju-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build Linux in Arch with WPE
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/project" -w /project -e FLUTTER_VERSION=3.44.8 archlinux:latest bash -c 'pacman -Syu --noconfirm git && git config --global --add safe.directory "*" && bash scripts/ci/linux/build_bundle.sh'
+          sudo chown -R "$(id -u):$(id -g)" .artifacts build
+          mkdir -p dist
+          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
+          sha256sum dist/qingju-linux-x64.tar.gz > dist/SHA256SUMS.txt
+          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > dist/BUILD.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qingju-linux
           path: dist/*
           if-no-files-found: error
           retention-days: 14

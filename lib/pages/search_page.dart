@@ -40,7 +40,7 @@ String normalizeDirectSearchLink(String rawValue) {
   final value = rawValue.trim();
   if (value.startsWith('/')) return value;
   if (RegExp(
-    r'^(?:www\.)?linux\.do(?::\d+)?/',
+    r'^qingju\.me(?::\d+)?/',
     caseSensitive: false,
   ).hasMatch(value)) {
     return 'https://$value';

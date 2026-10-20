@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/providers/theme_provider.dart';
 import 'package:fluxdo/theme/app_palettes.dart';
+import 'package:fluxdo/theme/accent_colors.dart';
 import 'package:fluxdo/utils/appearance_warmup.dart';
 import 'package:fluxdo/utils/seed_color_scheme.dart';
 
@@ -12,7 +13,7 @@ void main() {
     const customColor = Color(0xFF123456);
     const themeState = ThemeState(
       mode: ThemeMode.system,
-      seedColor: Colors.blue,
+      seedColor: AccentColors.defaultSeed,
       schemeVariant: DynamicSchemeVariant.tonalSpot,
       customColors: [customColor],
     );
@@ -32,7 +33,7 @@ void main() {
 
     // 色卡网格：当前生效种子 + 内置调色板（跟随当前 variant，此处 tonalSpot）
     for (final seed in <Color>{
-      Colors.blue,
+      AccentColors.defaultSeed,
       ...AppPalettes.builtins.map((p) => p.seedColor),
     }) {
       SeedColorScheme.from(seedColor: seed, brightness: Brightness.light);
@@ -40,11 +41,11 @@ void main() {
     // 自定义色卡
     SeedColorScheme.from(seedColor: customColor, brightness: Brightness.light);
     // 主题模式卡的亮/暗预览
-    SeedColorScheme.from(seedColor: Colors.blue, brightness: Brightness.dark);
+    SeedColorScheme.from(seedColor: AccentColors.defaultSeed, brightness: Brightness.dark);
     // 配色风格卡：当前生效种子 × 9 种风格
     for (final variant in DynamicSchemeVariant.values) {
       SeedColorScheme.from(
-        seedColor: Colors.blue,
+        seedColor: AccentColors.defaultSeed,
         brightness: Brightness.light,
         variant: variant,
       );

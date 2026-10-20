@@ -125,6 +125,6 @@ class AccentColors {
 
   /// 内置默认色：默认调色板的种子色。
   ///
-  /// 沿用应用一直以来的蓝色种子，保证老用户升级后强调色不变。
+  /// 青橘品牌默认使用青绿色；已保存的个人配色不受影响。
   static const defaultSeed = Color(0xFF4C8C43);
 }

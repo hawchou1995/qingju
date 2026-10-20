@@ -22,19 +22,19 @@ void main() {
   test('canHandleUri 只接受受支持的 scheme 和 host', () {
     final service = DeepLinkService.instance;
 
-    expect(service.canHandleUri(Uri.parse('https://linux.do/t/123')), isTrue);
+    expect(service.canHandleUri(Uri.parse('https://qingju.me/t/123')), isTrue);
     expect(
-      service.canHandleUri(Uri.parse('https://www.linux.do/t/123')),
-      isTrue,
+      service.canHandleUri(Uri.parse('https://www.qingju.me/t/123')),
+      isFalse,
     );
     expect(
-      service.canHandleUri(Uri.parse('https://meta.linux.do/latest')),
-      isTrue,
+      service.canHandleUri(Uri.parse('https://meta.qingju.me/latest')),
+      isFalse,
     );
-    expect(service.canHandleUri(Uri.parse('fluxdo://topic/123')), isTrue);
+    expect(service.canHandleUri(Uri.parse('qingju://topic/123')), isTrue);
     expect(
       service.canHandleUri(Uri.parse('discourse://auth_redirect?payload=x')),
-      isTrue,
+      isFalse,
     );
     expect(
       service.canHandleUri(Uri.parse('https://example.com/t/123')),
@@ -65,7 +65,7 @@ void main() {
     expect(Navigator.of(context).canPop(), isFalse);
   });
 
-  testWidgets('handleUri 支持 fluxdo 话题链接', (tester) async {
+  testWidgets('handleUri 支持青橘话题链接', (tester) async {
     BuildContext? capturedContext;
     final observer = _RecordingNavigatorObserver();
 
@@ -84,7 +84,7 @@ void main() {
     final context = capturedContext!;
     observer.pushedRoutes.clear();
     DeepLinkService.instance.updateContext(context);
-    DeepLinkService.instance.handleUri(Uri.parse('fluxdo://topic/123/5'));
+    DeepLinkService.instance.handleUri(Uri.parse('qingju://topic/123/5'));
 
     expect(observer.pushedRoutes, hasLength(1));
     expect(Navigator.of(context).canPop(), isTrue);
@@ -93,7 +93,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('handleUri 支持 fluxdo 用户链接', (tester) async {
+  testWidgets('handleUri 支持青橘用户链接', (tester) async {
     BuildContext? capturedContext;
     final observer = _RecordingNavigatorObserver();
 
@@ -112,7 +112,7 @@ void main() {
     final context = capturedContext!;
     observer.pushedRoutes.clear();
     DeepLinkService.instance.updateContext(context);
-    DeepLinkService.instance.handleUri(Uri.parse('fluxdo://user/alice'));
+    DeepLinkService.instance.handleUri(Uri.parse('qingju://user/alice'));
 
     expect(observer.pushedRoutes, hasLength(1));
     expect(Navigator.of(context).canPop(), isTrue);
@@ -121,7 +121,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('handleUri 对 fluxdo scheme 大小写不敏感', (tester) async {
+  testWidgets('handleUri 对青橘路径大小写不敏感', (tester) async {
     BuildContext? capturedContext;
     final observer = _RecordingNavigatorObserver();
 
@@ -140,7 +140,7 @@ void main() {
     final context = capturedContext!;
     observer.pushedRoutes.clear();
     DeepLinkService.instance.updateContext(context);
-    DeepLinkService.instance.handleUri(Uri.parse('fluxdo://Topic/123'));
+    DeepLinkService.instance.handleUri(Uri.parse('qingju://Topic/123'));
 
     expect(observer.pushedRoutes, hasLength(1));
     expect(Navigator.of(context).canPop(), isTrue);

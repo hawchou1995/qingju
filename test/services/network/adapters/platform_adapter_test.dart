@@ -10,7 +10,7 @@ void main() {
     }) {
       return RequestOptions(
         path: '/latest.json',
-        baseUrl: 'https://linux.do',
+        baseUrl: 'https://qingju.me',
         responseType: responseType,
         extra: extra ?? <String, dynamic>{},
       );
@@ -52,7 +52,7 @@ void main() {
     RequestOptions options(
       String path, {
       String method = 'GET',
-      String baseUrl = 'https://linux.do',
+      String baseUrl = 'https://qingju.me',
       ResponseType? responseType,
       Map<String, dynamic>? headers,
     }) {

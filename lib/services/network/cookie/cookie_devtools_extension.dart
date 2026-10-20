@@ -302,7 +302,7 @@ class CookieDevtoolsExtension {
   // helpers
   // ---------------------------------------------------------------------------
 
-  String _defaultUrl() => 'https://linux.do';
+  String _defaultUrl() => 'https://qingju.me';
 
   developer.ServiceExtensionResponse _okResult(Object data) {
     return developer.ServiceExtensionResponse.result(jsonEncode(data));

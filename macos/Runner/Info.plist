@@ -38,8 +38,7 @@
 			<string>com.fluxdo.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>fluxdo</string>
-				<string>discourse</string>
+				<string>qingju</string>
 			</array>
 		</dict>
 	</array>

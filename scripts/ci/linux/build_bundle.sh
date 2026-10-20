@@ -80,6 +80,8 @@ flutter pub get
 echo "==> Generating l10n"
 dart tool/gen_l10n.dart
 
+dart tool/project_prep.dart app
+
 bash "${SCRIPT_DIR}/patch_plugins.sh"
 dart tool/project_tasks.dart native:prepare linux --release
 
