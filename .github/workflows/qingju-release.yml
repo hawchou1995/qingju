@@ -10,7 +10,7 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.28.2
+        default: qingju-v0.2.29
       prerelease:
         description: 是否发布为预发布（true/false）
         required: true
@@ -25,6 +25,7 @@ concurrency:
 
 env:
   FLUXDO_LINUX_BUILD_FLAGS: ''
+  QINGJU_RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
 
 jobs:
   build:
@@ -122,6 +123,11 @@ jobs:
       - name: Hash and provenance
         shell: pwsh
         run: |
+          $version = $env:QINGJU_RELEASE_TAG -replace '^qingju-v', ''
+          if ($version -notmatch '^\d+(\.\d+){2,3}$') { throw '发布标签版本格式无效' }
+          Get-ChildItem dist -File | ForEach-Object {
+            Rename-Item $_.FullName ($_.Name -replace '^qingju-', "qingju-$version-")
+          }
           $files = Get-ChildItem dist -File
           if (!$files) { throw '没有产物' }
           $files | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content "dist/SHA256SUMS-${{ matrix.platform }}.txt"
@@ -147,8 +153,10 @@ jobs:
             archlinux:base-20260906.0.587075 bash scripts/ci/linux/qingju_container.sh
           sudo chown -R "$(id -u):$(id -g)" .artifacts build
           mkdir -p dist
-          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
-          sha256sum dist/qingju-linux-x64.tar.gz > "dist/SHA256SUMS-linux.txt"
+          version="${QINGJU_RELEASE_TAG#qingju-v}"
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+){2,3}$ ]] || { echo '发布标签版本格式无效'; exit 1; }
+          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz "dist/qingju-$version-linux-x64.tar.gz"
+          sha256sum "dist/qingju-$version-linux-x64.tar.gz" > "dist/SHA256SUMS-linux.txt"
           printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > "dist/BUILD-linux.txt"
       - uses: actions/upload-artifact@v4
         with:
@@ -197,5 +205,7 @@ jobs:
             - Windows：x64 解压即用。
             - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
 
-            各包内附 `BUILD.txt`（源码提交）与 `SHA256SUMS.txt`。
+            修复移动端中文 Client Hints 导致的 HTTP 请求头异常；应用内部版本为 0.2.29。
+            所有安装包文件名带版本号；发布资产另附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
+            已通过请求头与凭据隔离回归测试，手机完整登录仍需安装新包后验收。
           files: dist/*

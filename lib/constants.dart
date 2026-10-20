@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:ua_client_hints/ua_client_hints.dart';
+import 'services/network/client_hints.dart';
 import 'config/site_customization.dart';
 import 'config/sites/qingju.dart';
 import 'config/site_identity.dart';
@@ -148,10 +148,7 @@ class AppConstants {
   static Future<void> _initClientHints() async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     try {
-      final hints = await userAgentClientHintsHeader();
-      // 移除包自带的 User-Agent（我们用自己清理过的）
-      hints.remove('User-Agent');
-      _cachedClientHints = hints;
+      _cachedClientHints = await loadForumClientHints();
       debugPrint('[AppConstants] Client Hints: $_cachedClientHints');
     } catch (e) {
       debugPrint('[AppConstants] 获取 Client Hints 失败: $e');
