@@ -25,7 +25,25 @@ Linux 产物由运行 [7b9d901a](https://github.com/hawchou1995/qingju/actions/r
 
 构建依赖（Linux CI 使用固定 Arch 快照 `2026-09-06`，确保含 `libwpe`/`wpebackend-fdo`/`wpewebkit 2.52`）：另需 `alsa-lib`（volume_controller）、`mpv`（media_kit_video）、`jdk-openjdk`（jni）。
 
-## GitHub Release：qingju-v0.2.28.1
+## GitHub Release：qingju-v0.2.28.2（正式版）
+
+<https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.2>（非预发布，提交 `d6090b8e`，运行 `39376670769`：五个构建作业 + publish 全部 success）。
+
+| 资产 | 字节 | SHA-256 |
+|---|---|---|
+| `qingju-android-arm64-debug.apk` | 229,749,356 | `f520af520c0650d7b8fef6ac61f6c2f31cf35a45e380712474a98d5f7491c206` |
+| `qingju-ios-arm64-unsigned.ipa` | 54,098,152 | `3236a85cc367d0cdddd420bd2223e5f12c26412032efdcd1508922bf1e70d48b` |
+| `qingju-macos-arm64-adhoc.zip` | 57,203,525 | `e0a66eec8d7e84f9c368d634656cdebff66a9aa3c76251d6dd269cc16dd77fe2` |
+| `qingju-windows-x64.zip` | 125,458,989 | `e3705f800b4e24702db4384b2bc5bf67de5b4aa4681b0c3c7ec6d29b2c152f82` |
+| `qingju-linux-x64.tar.gz` | 242,787,761 | `eeb6a254d76a5334b1785f0d2dedef18b862bd8d28580162295225dc84677306` |
+
+每个平台另有独立的 `SHA256SUMS-<platform>.txt` 与 `BUILD-<platform>.txt`（均记录提交 `d6090b8e`）。已完整下载 macOS 包实测字节数 57,203,525、SHA-256 与清单一致；其余四份因带宽限制只核对了清单内容，未逐个完整下载复算。
+
+`SHA256SUMS-linux.txt` 中的文件名带 `dist/` 前缀（`sha256sum` 在仓库根目录执行），其余平台为纯文件名。
+
+上一版 `qingju-v0.2.28.1`（Prerelease）保留作历史，其发布页的 `SHA256SUMS.txt` 为合并后重算的全量清单。
+
+### 历史：qingju-v0.2.28.1（Prerelease）
 
 <https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.1>（Prerelease，提交 `d36d2ac4`，运行 `39372308883`：五个构建作业与发布作业全部 success）。
 

@@ -22,9 +22,9 @@ Flutter 固定 3.44.8（`.fvmrc`），不整体升级无关依赖。先执行 `g
 
 ## Release 发布
 
-`.github/workflows/qingju-release.yml` 使用 `qingju-v*` 标签（或手动 dispatch）构建五平台并发布 GitHub Prerelease；上游 `build.yaml` 只监听 `v*`，两者互不触发。
+`.github/workflows/qingju-release.yml` 使用 `qingju-v*` 标签（或手动 dispatch）构建五平台并发布 GitHub Release（默认正式版，可用 `prerelease=true` 发预发布）；上游 `build.yaml` 只监听 `v*`，两者互不触发。
 
-当前发布：<https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.1>（提交 `d36d2ac4`，Prerelease）。资产与校验见 [青橘五平台构建产物](qingju-artifacts.md)。
+当前发布：<https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.2>（提交 `d6090b8e`，正式版；`qingju-v0.2.28.1` 为历史预发布）。资产与校验见 [青橘五平台构建产物](qingju-artifacts.md)。
 
 发布页的 `SHA256SUMS.txt` 是对发布资产重新计算后的全量清单；流水线自 0.2.28.2 起改为每平台输出 `SHA256SUMS-<platform>.txt` / `BUILD-<platform>.txt`，避免合并 artifact 时互相覆盖。
 
