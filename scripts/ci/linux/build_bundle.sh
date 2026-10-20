@@ -86,7 +86,7 @@ bash "${SCRIPT_DIR}/patch_plugins.sh"
 dart tool/project_tasks.dart native:prepare linux --release
 
 echo "==> Building Linux bundle"
-CC=gcc CXX=g++ flutter build linux --release
+CC=gcc CXX=g++ flutter build linux --release ${FLUXDO_LINUX_BUILD_FLAGS:-}
 
 echo "==> Bundling WPE runtime libraries"
 bash "${SCRIPT_DIR}/bundle_runtime_libs.sh" "build/linux/x64/release/bundle"

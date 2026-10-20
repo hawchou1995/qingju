@@ -1,0 +1,48 @@
+name: 青橘 Linux 构建
+
+on:
+  push:
+    branches: [qingju]
+    paths:
+      - 'lib/**'
+      - 'linux/**'
+      - 'scripts/ci/linux/**'
+      - 'core/doh_proxy/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/qingju-linux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qingju-linux-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      # 便于诊断编译失败：需要时置为 --verbose。
+      FLUXDO_LINUX_BUILD_FLAGS: ${{ vars.FLUXDO_LINUX_BUILD_FLAGS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build Linux in Arch with WPE
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/project" -w /project \
+            -e FLUTTER_VERSION=3.44.8 -e FLUXDO_LINUX_BUILD_FLAGS="$FLUXDO_LINUX_BUILD_FLAGS" \
+            archlinux:base-20260906.0.587075 bash scripts/ci/linux/qingju_container.sh
+          sudo chown -R "$(id -u):$(id -g)" .artifacts build
+          mkdir -p dist
+          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
+          sha256sum dist/qingju-linux-x64.tar.gz > dist/SHA256SUMS.txt
+          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > dist/BUILD.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qingju-linux
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

@@ -1,8 +1,19 @@
-name: 青橘五平台验收
+name: 青橘四平台验收（Linux 见 qingju-linux.yml）
 
 on:
   push:
     branches: [qingju]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'macos/**'
+      - 'windows/**'
+      - 'assets/**'
+      - 'packages/**'
+      - 'core/doh_proxy/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/qingju-build.yml'
   workflow_dispatch:
 
 permissions:
@@ -126,28 +137,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: qingju-${{ matrix.platform }}
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 14
-
-  linux:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Build Linux in Arch with WPE
-        run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/project" -w /project -e FLUTTER_VERSION=3.44.8 archlinux:base-20260906.0.587075 bash scripts/ci/linux/qingju_container.sh
-          sudo chown -R "$(id -u):$(id -g)" .artifacts build
-          mkdir -p dist
-          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
-          sha256sum dist/qingju-linux-x64.tar.gz > dist/SHA256SUMS.txt
-          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > dist/BUILD.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: qingju-linux
           path: dist/*
           if-no-files-found: error
           retention-days: 14
