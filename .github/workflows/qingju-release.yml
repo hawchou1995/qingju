@@ -10,7 +10,11 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.28.1
+        default: qingju-v0.2.28.2
+      prerelease:
+        description: 是否发布为预发布（true/false）
+        required: true
+        default: 'false'
 
 permissions:
   contents: write
@@ -182,10 +186,10 @@ jobs:
           name: 青橘 ${{ steps.tag.outputs.tag }}
           target_commitish: ${{ github.sha }}
           draft: false
-          prerelease: true
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
           generate_release_notes: true
           body: |
-            青橘社区（qingju.me）第三方客户端验收构建，基于 FluxDO（GPL-3.0）二开。
+            青橘社区（qingju.me）第三方客户端，基于 FluxDO（GPL-3.0）二开。
 
             - Android：ARM64 debug 测试签名 APK，可侧载。
             - iOS：无签名 IPA，需自备证书重签。
