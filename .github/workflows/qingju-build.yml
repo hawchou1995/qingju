@@ -61,13 +61,11 @@ jobs:
       - name: Apple Rust
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
-      - name: Linux dependencies
-        if: matrix.platform == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libepoxy-dev libwpewebkit-2.0-dev libwpebackend-fdo-1.0-dev libwayland-dev libmpv-dev libasound2-dev liblzma-dev libstdc++-12-dev
       - name: Prepare
         run: dart tool/project_prep.dart app
+      - name: Verify site boundary
+        if: matrix.platform == 'windows'
+        run: flutter test --no-pub test/services/qingju_site_boundary_test.dart
       - name: Build Android ARM64 debug signed
         if: matrix.platform == 'android'
         run: dart tool/flutterw.dart build apk --debug --target-platform android-arm64

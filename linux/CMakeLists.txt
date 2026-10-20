@@ -156,6 +156,10 @@ endif()
 # Install .desktop file for URL scheme handling
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/fluxdo.desktop"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
+  RENAME "me.qingju.client.desktop"
+  COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/qingju.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps"
   COMPONENT Runtime)
 
 # === 媒体压缩:随包分发 ffmpeg(构建期下载,开发机缓存一次)===
