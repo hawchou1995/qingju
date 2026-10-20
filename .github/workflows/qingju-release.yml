@@ -1,0 +1,197 @@
+name: 青橘 Release 构建与发布
+
+# 只用 qingju-v* 标签，避免触发上游 build.yaml 的 v* 发版流水线。
+on:
+  push:
+    tags:
+      - 'qingju-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 发布标签（qingju-v 前缀）
+        required: true
+        default: qingju-v0.2.28.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qingju-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUXDO_LINUX_BUILD_FLAGS: ''
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            os: ubuntu-24.04
+          - platform: ios
+            os: macos-15
+          - platform: macos
+            os: macos-15
+          - platform: windows
+            os: windows-2022
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core/doh_proxy
+          key: qingju-release-${{ matrix.platform }}
+      - name: Android Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android Rust
+        if: matrix.platform == 'android'
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --locked
+      - name: Windows NASM
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          'C:\Program Files\NASM' >> $env:GITHUB_PATH
+      - name: Apple Rust
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
+      - name: Prepare
+        run: dart tool/project_prep.dart app
+      - name: Build Android ARM64 debug signed
+        if: matrix.platform == 'android'
+        run: dart tool/flutterw.dart build apk --debug --target-platform android-arm64
+      - name: Build iOS unsigned
+        if: matrix.platform == 'ios'
+        run: dart tool/flutterw.dart build ios --release --no-codesign
+      - name: Build macOS ARM64 adhoc
+        if: matrix.platform == 'macos'
+        env:
+          FLUXDO_MACOS_ARCH: arm64
+          FLUTTER_XCODE_EXCLUDED_ARCHS: x86_64
+        run: dart tool/flutterw.dart build macos --release
+      - name: Build Windows x64
+        if: matrix.platform == 'windows'
+        run: dart tool/flutterw.dart build windows --release
+      - name: Package Android
+        if: matrix.platform == 'android'
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/qingju-android-arm64-debug.apk
+      - name: Package iOS
+        if: matrix.platform == 'ios'
+        run: |
+          mkdir -p dist/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          cd dist
+          zip -qr qingju-ios-arm64-unsigned.ipa Payload
+          rm -rf Payload
+      - name: Package macOS
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p dist
+          app=$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" dist/qingju-macos-arm64-adhoc.zip
+      - name: Package Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist -Force
+          if (!(Test-Path build/windows/x64/runner/Release/qingju.exe)) { throw '应用未生成' }
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/qingju-windows-x64.zip
+      - name: Hash and provenance
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist -File
+          if (!$files) { throw '没有产物' }
+          $files | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
+          "commit=$env:GITHUB_SHA`nplatform=${{ matrix.platform }}`nrun=$env:GITHUB_RUN_ID" | Set-Content dist/BUILD.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build Linux in Arch with WPE
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/project" -w /project \
+            -e FLUTTER_VERSION=3.44.8 -e FLUXDO_LINUX_BUILD_FLAGS="$FLUXDO_LINUX_BUILD_FLAGS" \
+            archlinux:base-20260906.0.587075 bash scripts/ci/linux/qingju_container.sh
+          sudo chown -R "$(id -u):$(id -g)" .artifacts build
+          mkdir -p dist
+          cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
+          sha256sum dist/qingju-linux-x64.tar.gz > dist/SHA256SUMS.txt
+          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > dist/BUILD.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [build, linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: release-*
+          merge-multiple: true
+      - name: List assets
+        run: |
+          ls -l dist
+          cat dist/BUILD.txt
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: 青橘 ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            青橘社区（qingju.me）第三方客户端验收构建，基于 FluxDO（GPL-3.0）二开。
+
+            - Android：ARM64 debug 测试签名 APK，可侧载。
+            - iOS：无签名 IPA，需自备证书重签。
+            - macOS：ARM64 adhoc 签名，未公证。
+            - Windows：x64 解压即用。
+            - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
+
+            各包内附 `BUILD.txt`（源码提交）与 `SHA256SUMS.txt`。
+          files: dist/*
