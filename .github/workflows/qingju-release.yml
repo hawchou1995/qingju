@@ -120,8 +120,8 @@ jobs:
         run: |
           $files = Get-ChildItem dist -File
           if (!$files) { throw '没有产物' }
-          $files | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
-          "commit=$env:GITHUB_SHA`nplatform=${{ matrix.platform }}`nrun=$env:GITHUB_RUN_ID" | Set-Content dist/BUILD.txt
+          $files | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content "dist/SHA256SUMS-${{ matrix.platform }}.txt"
+          "commit=$env:GITHUB_SHA`nplatform=${{ matrix.platform }}`nrun=$env:GITHUB_RUN_ID" | Set-Content "dist/BUILD-${{ matrix.platform }}.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
@@ -144,8 +144,8 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" .artifacts build
           mkdir -p dist
           cp .artifacts/linux/fluxdo-linux-bundle.tar.gz dist/qingju-linux-x64.tar.gz
-          sha256sum dist/qingju-linux-x64.tar.gz > dist/SHA256SUMS.txt
-          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > dist/BUILD.txt
+          sha256sum dist/qingju-linux-x64.tar.gz > "dist/SHA256SUMS-linux.txt"
+          printf 'commit=%s\nplatform=linux-x64\n' "$GITHUB_SHA" > "dist/BUILD-linux.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
@@ -166,7 +166,7 @@ jobs:
       - name: List assets
         run: |
           ls -l dist
-          cat dist/BUILD.txt
+          cat dist/BUILD-*.txt
       - name: Resolve tag
         id: tag
         run: |

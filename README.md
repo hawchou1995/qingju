@@ -13,7 +13,11 @@
 
 ## 构建与验收
 
-当前为开发验收构建，不发布应用商店、GitHub Release 或上游更新渠道。
+当前为开发验收构建，同时提供 GitHub 预发布（Prerelease）下载：
+
+- 最新预发布：<https://github.com/hawchou1995/qingju/releases>
+- 标签格式 `qingju-v*`（例如 `qingju-v0.2.28.1`），与上游 `v*` 发版流水线互不触发。
+- 各平台包内附 `BUILD.txt` / `SHA256SUMS.txt`；iOS 为无签名 IPA，需自行重签。
 
 - [青橘适配、构建与验收说明](docs/qingju.md)
 - [领域术语](CONTEXT.md)

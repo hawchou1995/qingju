@@ -24,3 +24,17 @@ Linux 产物由运行 [7b9d901a](https://github.com/hawchou1995/qingju/actions/r
 - Linux：解压后运行 `bundle/qingju`；需要与构建环境兼容的 glibc、GTK3、WPE WebKit 与系统密钥环。
 
 构建依赖（Linux CI 使用固定 Arch 快照 `2026-09-06`，确保含 `libwpe`/`wpebackend-fdo`/`wpewebkit 2.52`）：另需 `alsa-lib`（volume_controller）、`mpv`（media_kit_video）、`jdk-openjdk`（jni）。
+
+## GitHub Release：qingju-v0.2.28.1
+
+<https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.1>（Prerelease，提交 `d36d2ac4`，运行 `39372308883`：五个构建作业与发布作业全部 success）。
+
+| 资产 | 字节 | SHA-256 |
+|---|---|---|
+| `qingju-android-arm64-debug.apk` | 229,749,356 | `93e61358edfe7897353b7b075717bbbd17c3d048d321cf812e367c21d8a99b98` |
+| `qingju-ios-arm64-unsigned.ipa` | 54,098,156 | `1d133632723f0ab282f4efcaf89e8f2b1fe84d4c6a74817722d3de39c4500972` |
+| `qingju-macos-arm64-adhoc.zip` | 57,203,500 | `729062789ba36f0a5352a4db15894ef9836d2894b09d2184be7ba1be87db3cab` |
+| `qingju-windows-x64.zip` | 125,458,991 | `0426f1eead3972a90862e6a94dd99584230c392594ad47a9542c40d4e0b663b2` |
+| `qingju-linux-x64.tar.gz` | 242,799,992 | `eaa7e401ea33c87b9431c446ee6261c376ba0fed80f7d5b237287580f795fe19` |
+
+发布页的 `SHA256SUMS.txt` 由这五个已发布资产逐一下载后重新计算并回传，可离线复核。

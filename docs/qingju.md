@@ -20,6 +20,14 @@ Flutter 固定 3.44.8（`.fvmrc`），不整体升级无关依赖。先执行 `g
 
 工作流 `.github/workflows/qingju-build.yml` 在青橘分支执行，只上传 artifacts，不创建标签、Release 或发布通知。每份 artifact 内有 `BUILD.txt`（源码提交号）和 `SHA256SUMS.txt`。本地下载目录为被 Git 忽略的 `deliverables/`；最终校验清单以其中实际生成的文件为准，不把“预期文件名”当作已经生成。
 
+## Release 发布
+
+`.github/workflows/qingju-release.yml` 使用 `qingju-v*` 标签（或手动 dispatch）构建五平台并发布 GitHub Prerelease；上游 `build.yaml` 只监听 `v*`，两者互不触发。
+
+当前发布：<https://github.com/hawchou1995/qingju/releases/tag/qingju-v0.2.28.1>（提交 `d36d2ac4`，Prerelease）。资产与校验见 [青橘五平台构建产物](qingju-artifacts.md)。
+
+发布页的 `SHA256SUMS.txt` 是对发布资产重新计算后的全量清单；流水线自 0.2.28.2 起改为每平台输出 `SHA256SUMS-<platform>.txt` / `BUILD-<platform>.txt`，避免合并 artifact 时互相覆盖。
+
 ## 测试口径
 
 基线为上游提交 `e1bd839e`，与青橘版使用相同 Flutter 版本。静态分析使用 `flutter analyze --no-pub`；根测试使用 `flutter test --no-pub --reporter json`。本机未开放 Windows 符号链接，依赖解析后可直接生成 l10n 并运行无 pub 检查；不修改全局系统策略。中文路径下分析服务出现 LSP 初始化 JSON 截断时，在英文临时工作树复测。
