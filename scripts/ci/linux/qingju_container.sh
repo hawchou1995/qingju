@@ -7,6 +7,8 @@ cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
 Server = https://archive.archlinux.org/repos/2026/09/06/$repo/os/$arch
 MIRRORS
 pacman -Syyuu --noconfirm git
-pacman -Si libwpe wpebackend-fdo wpewebkit
+# volume_controller 的 Linux 插件要求 ALSA 开发头文件。
+pacman -S --noconfirm --needed alsa-lib
+pacman -Si libwpe wpebackend-fdo wpewebkit alsa-lib
 git config --global --add safe.directory '*'
 bash scripts/ci/linux/build_bundle.sh
