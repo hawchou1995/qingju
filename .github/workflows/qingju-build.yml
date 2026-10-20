@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: qingju-${{ github.ref }}
+  group: qingju-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
