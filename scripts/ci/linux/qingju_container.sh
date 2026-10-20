@@ -9,6 +9,8 @@ MIRRORS
 pacman -Syyuu --noconfirm git
 # volume_controller 的 Linux 插件要求 ALSA 开发头文件。
 pacman -S --noconfirm --needed alsa-lib
-pacman -Si libwpe wpebackend-fdo wpewebkit alsa-lib
+# media_kit_video 链接 libmpv（提供 mpv.pc）。
+pacman -S --noconfirm --needed mpv
+pacman -Si libwpe wpebackend-fdo wpewebkit alsa-lib mpv
 git config --global --add safe.directory '*'
 bash scripts/ci/linux/build_bundle.sh
