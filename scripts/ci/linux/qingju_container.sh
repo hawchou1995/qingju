@@ -13,4 +13,6 @@ pacman -S --noconfirm --needed alsa-lib
 pacman -S --noconfirm --needed mpv
 pacman -Si libwpe wpebackend-fdo wpewebkit alsa-lib mpv
 git config --global --add safe.directory '*'
+# CI 容器有网络：不要给 cargokit 打 --offline 补丁（flatpak 沙箱才需要）。
+export CARGOKIT_OFFLINE_PATCH=0
 bash scripts/ci/linux/build_bundle.sh

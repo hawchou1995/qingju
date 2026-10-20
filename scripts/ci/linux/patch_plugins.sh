@@ -35,10 +35,14 @@ for header in "${JSON_HEADERS[@]}"; do
   fi
 done
 
+# cargokit 的 --offline 只适用于依赖已在缓存里的 Flatpak 沙箱；普通 CI 容器
+# 需要联网解析，否则 build_tool 锁定的 yaml 版本会被判为不可满足。
+CARGOKIT_OFFLINE_PATCH="${CARGOKIT_OFFLINE_PATCH:-1}"
+
 mapfile -t CARGOKIT_RUN_BUILD_TOOL_SH < <(find "${SEARCH_ROOTS[@]}" -path '*/cargokit/run_build_tool.sh' 2>/dev/null | sort -u)
 
 for script in "${CARGOKIT_RUN_BUILD_TOOL_SH[@]}"; do
-  if grep -q 'pub get --no-precompile' "${script}" && ! grep -q 'pub get --offline --no-precompile' "${script}"; then
+  if [[ "${CARGOKIT_OFFLINE_PATCH}" == "1" ]] && grep -q 'pub get --no-precompile' "${script}" && ! grep -q 'pub get --offline --no-precompile' "${script}"; then
     echo "==> Patching ${script}"
     sed -i 's/pub get --no-precompile/pub get --offline --no-precompile/g' "${script}"
     PATCHED=1
@@ -48,7 +52,7 @@ done
 mapfile -t CARGOKIT_RUN_BUILD_TOOL_CMD < <(find "${SEARCH_ROOTS[@]}" -path '*/cargokit/run_build_tool.cmd' 2>/dev/null | sort -u)
 
 for script in "${CARGOKIT_RUN_BUILD_TOOL_CMD[@]}"; do
-  if grep -q 'pub get --no-precompile' "${script}" && ! grep -q 'pub get --offline --no-precompile' "${script}"; then
+  if [[ "${CARGOKIT_OFFLINE_PATCH}" == "1" ]] && grep -q 'pub get --no-precompile' "${script}" && ! grep -q 'pub get --offline --no-precompile' "${script}"; then
     echo "==> Patching ${script}"
     sed -i 's/pub get --no-precompile/pub get --offline --no-precompile/g' "${script}"
     PATCHED=1
