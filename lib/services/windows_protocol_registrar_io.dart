@@ -11,7 +11,7 @@ import 'package:win32_registry/win32_registry.dart';
 /// 第二个进程转发给已运行实例(app_links 官方集成方式)。
 Future<void> ensureWindowsProtocolsRegistered() async {
   if (!Platform.isWindows) return;
-  for (final scheme in const ['discourse', 'fluxdo']) {
+  for (final scheme in const ['qingju']) {
     try {
       _registerScheme(scheme);
     } catch (e) {

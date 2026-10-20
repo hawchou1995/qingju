@@ -784,7 +784,7 @@ class MainApp extends ConsumerWidget {
                 // custom keys);未开启崩溃采集时内部 no-op。
                 CrashContextNavObserver(),
               ],
-              title: 'FluxDO',
+              title: '青橘',
               locale: TranslationProvider.of(context).flutterLocale,
               localizationsDelegates: const [
                 GlobalMaterialLocalizations.delegate,

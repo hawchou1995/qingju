@@ -1,0 +1,135 @@
+name: 青橘五平台验收
+
+on:
+  push:
+    branches: [qingju]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qingju-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            os: ubuntu-24.04
+          - platform: ios
+            os: macos-15
+          - platform: macos
+            os: macos-15
+          - platform: windows
+            os: windows-2022
+          - platform: linux
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.8'
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core/doh_proxy
+          key: qingju-${{ matrix.platform }}
+      - name: Android Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android Rust
+        if: matrix.platform == 'android'
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --locked
+      - name: Windows NASM
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          choco install nasm -y --no-progress
+          'C:\Program Files\NASM' >> $env:GITHUB_PATH
+      - name: Apple Rust
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
+      - name: Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libepoxy-dev libwpewebkit-2.0-dev libwpebackend-fdo-1.0-dev libwayland-dev libmpv-dev libasound2-dev liblzma-dev libstdc++-12-dev
+      - name: Prepare
+        run: dart tool/project_prep.dart app
+      - name: Build Android ARM64 debug signed
+        if: matrix.platform == 'android'
+        run: dart tool/flutterw.dart build apk --debug --target-platform android-arm64
+      - name: Build iOS unsigned
+        if: matrix.platform == 'ios'
+        run: dart tool/flutterw.dart build ios --release --no-codesign
+      - name: Build macOS ARM64 adhoc
+        if: matrix.platform == 'macos'
+        env:
+          FLUXDO_MACOS_ARCH: arm64
+          FLUTTER_XCODE_EXCLUDED_ARCHS: x86_64
+        run: dart tool/flutterw.dart build macos --release
+      - name: Build Windows x64
+        if: matrix.platform == 'windows'
+        run: dart tool/flutterw.dart build windows --release
+      - name: Build Linux x64
+        if: matrix.platform == 'linux'
+        run: dart tool/flutterw.dart build linux --release
+      - name: Package Android
+        if: matrix.platform == 'android'
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/qingju-android-arm64-debug.apk
+      - name: Package iOS
+        if: matrix.platform == 'ios'
+        run: |
+          mkdir -p dist/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          cd dist
+          zip -qr qingju-ios-arm64-unsigned.ipa Payload
+          rm -rf Payload
+      - name: Package macOS
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p dist
+          app=$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" dist/qingju-macos-arm64-adhoc.zip
+      - name: Package Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist -Force
+          if (!(Test-Path build/windows/x64/runner/Release/qingju.exe)) { throw '应用未生成' }
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/qingju-windows-x64.zip
+      - name: Package Linux
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir -p dist
+          tar -C build/linux/x64/release -czf dist/qingju-linux-x64.tar.gz bundle
+      - name: Hash and provenance
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist -File
+          if (!$files) { throw '没有产物' }
+          $files | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content dist/SHA256SUMS.txt
+          "commit=$env:GITHUB_SHA`nplatform=${{ matrix.platform }}`nrun=$env:GITHUB_RUN_ID" | Set-Content dist/BUILD.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qingju-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

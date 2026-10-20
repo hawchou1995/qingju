@@ -24,7 +24,7 @@ class ClipboardTopicLinkService {
       'pref_clipboard_topic_link_last_prompted_hash';
 
   static final RegExp _linuxDoUrlRegex = RegExp(
-    r'(?:(?:https?:)?//)?(?:www\.)?linux\.do(?::\d+)?/[^\s<>"\]\)）}】》]+',
+    r'(?:(?:https?:)?//)?qingju\.me(?::\d+)?/[^\s<>"\]\)）}】》]+',
     caseSensitive: false,
   );
 
@@ -167,7 +167,7 @@ class ClipboardTopicLinkService {
 
   static bool _isAllowedHost(String host) {
     final normalizedHost = host.toLowerCase();
-    return normalizedHost == 'linux.do' || normalizedHost == 'www.linux.do';
+    return normalizedHost == 'qingju.me';
   }
 
   static bool _isSupportedTopicPath(String path) {

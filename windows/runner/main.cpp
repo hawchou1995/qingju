@@ -13,11 +13,11 @@
 static bool SendAppLinkToInstance(const wchar_t* command_line) {
   if (command_line == nullptr ||
       (::wcsstr(command_line, L"discourse://") == nullptr &&
-       ::wcsstr(command_line, L"fluxdo://") == nullptr)) {
+       ::wcsstr(command_line, L"qingju://") == nullptr)) {
     return false;
   }
 
-  HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"FluxDO");
+  HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"青橘");
   if (hwnd == nullptr) {
     return false;
   }
@@ -69,7 +69,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"FluxDO", origin, size)) {
+  if (!window.Create(L"青橘", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

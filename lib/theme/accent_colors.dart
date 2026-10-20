@@ -126,5 +126,5 @@ class AccentColors {
   /// 内置默认色：默认调色板的种子色。
   ///
   /// 沿用应用一直以来的蓝色种子，保证老用户升级后强调色不变。
-  static const defaultSeed = Colors.blue;
+  static const defaultSeed = Color(0xFF4C8C43);
 }

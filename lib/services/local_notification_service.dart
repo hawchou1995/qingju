@@ -35,9 +35,9 @@ class LocalNotificationService {
     );
     const linuxSettings = LinuxInitializationSettings(defaultActionName: 'Open');
     const windowsSettings = WindowsInitializationSettings(
-      appName: 'FluxDO',
-      appUserModelId: 'Com.FluxDO.FluxDO',
-      guid: 'e965ef8c-b676-47c1-b6e7-297d63942974',
+      appName: '青橘',
+      appUserModelId: 'me.qingju.client',
+      guid: '43901dfc-73ac-4912-9d24-326a0776764a',
     );
 
     const settings = InitializationSettings(

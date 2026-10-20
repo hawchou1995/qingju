@@ -5,10 +5,11 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = fluxdo
+PRODUCT_NAME = qingju
+INFOPLIST_KEY_CFBundleDisplayName = 青橘
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.github.lingyan000.fluxdo
+PRODUCT_BUNDLE_IDENTIFIER = me.qingju.client
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 FluxDO. All rights reserved.

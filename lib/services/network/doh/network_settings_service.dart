@@ -1330,13 +1330,7 @@ class NetworkSettingsService {
 
   List<String> _collectCommonHosts() {
     final preloaded = PreloadedDataService();
-    final hosts = <String>{
-      'connect.linux.do',
-      'ping.linux.do',
-      'cdn.linux.do',
-      'credit.linux.do',
-      'cdk.linux.do',
-    };
+    final hosts = <String>{Uri.parse(AppConstants.baseUrl).host};
 
     for (final value in [
       AppConstants.baseUrl,

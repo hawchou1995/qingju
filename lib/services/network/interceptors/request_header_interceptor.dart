@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
 import '../../../constants.dart';
+import '../../../config/site_identity.dart';
+import 'site_boundary_interceptor.dart';
 import '../../log/log_writer.dart';
 import '../../user_presence_service.dart';
 import '../cookie/csrf_token_service.dart';
@@ -27,6 +29,13 @@ class RequestHeaderInterceptor extends Interceptor {
     final hints = AppConstants.clientHints;
     if (hints != null) {
       options.headers.addAll(hints);
+    }
+
+    // 跨站资源仅发送公开请求头，不获取或注入主站 CSRF。
+    if (!SiteIdentity.isCredentialOrigin(options.uri)) {
+      SiteBoundaryInterceptor.stripCredentials(options.headers);
+      handler.next(options);
+      return;
     }
 
     // 3. 设置 CSRF Token（未登录时无法获取，跳过）

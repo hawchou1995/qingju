@@ -79,7 +79,7 @@ class QrLoginService {
   QrLoginService._();
   static final QrLoginService instance = QrLoginService._();
 
-  static const String scheme = 'fluxdo';
+  static const String scheme = 'qingju';
   static const String host = 'qr-login';
   static const int currentVersion = 2;
 

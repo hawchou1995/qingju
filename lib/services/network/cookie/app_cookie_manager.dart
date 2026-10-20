@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:enhanced_cookie_jar/enhanced_cookie_jar.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../config/site_identity.dart';
 import '../../auth_session.dart';
 import '../../log/log_writer.dart';
 import '../flux_request_spec.dart';
@@ -347,6 +348,7 @@ class AppCookieManager extends Interceptor {
 
   /// Load cookies in cookie string for the request.
   Future<String> loadCookies(RequestOptions options) async {
+    if (!SiteIdentity.isCredentialOrigin(options.uri)) return '';
     List<Cookie> savedCookies;
     try {
       savedCookies = await cookieJar.loadForRequest(options.uri);
@@ -476,6 +478,7 @@ class AppCookieManager extends Interceptor {
 
   /// Save cookies from the response including redirected requests.
   Future<void> saveCookies(Response response) async {
+    if (!SiteIdentity.isCredentialOrigin(response.requestOptions.uri)) return;
     final setCookies = response.headers[HttpHeaders.setCookieHeader];
     if (setCookies == null || setCookies.isEmpty) {
       return;

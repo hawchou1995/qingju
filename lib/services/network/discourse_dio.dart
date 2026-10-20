@@ -9,6 +9,7 @@ import 'cookie/csrf_token_service.dart';
 import 'interceptors/cf_challenge_interceptor.dart';
 import 'interceptors/request_scheduler_interceptor.dart';
 import 'interceptors/session_guard_interceptor.dart';
+import 'interceptors/site_boundary_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/network_log_interceptor.dart';
 import 'interceptors/redirect_interceptor.dart';
@@ -59,6 +60,7 @@ class DiscourseDio {
     configurePlatformAdapter(dio);
 
     // 2. 会话代守卫（最先执行，确保过期请求不进入后续拦截器）
+    dio.interceptors.add(SiteBoundaryInterceptor());
     dio.interceptors.add(SessionGuardInterceptor());
 
     // 3. 并发限制 + 滑动窗口速率限制（null 表示不限制）

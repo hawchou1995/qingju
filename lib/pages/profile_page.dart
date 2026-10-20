@@ -4,6 +4,8 @@ import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import '../constants.dart';
+import '../config/site_identity.dart';
 import '../providers/discourse_providers.dart';
 import '../providers/selected_topic_provider.dart';
 import '../providers/shortcut_provider.dart';
@@ -324,7 +326,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (username != null && username.isNotEmpty) {
       await WebViewPage.open(
         context, 
-        'https://linux.do/u/$username/preferences/account',
+        '${AppConstants.baseUrl}/u/$username/preferences/account',
         title: context.l10n.profile_editProfile,
         injectCss: '''
           .new-user-content-wrapper {
@@ -608,7 +610,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget _buildBalanceCards() {
     // 仅本页首次成为活跃 tab 后才渲染余额卡片;未激活时返回空,不建 Consumer、
     // 不 watch provider,从而不触发 cdk/ldc user-info 请求。
-    if (!_balanceEverActive) return const SizedBox.shrink();
+    if (!SiteIdentity.supportsLinuxDoServices || !_balanceEverActive) {
+      return const SizedBox.shrink();
+    }
     return Consumer(
       builder: (context, ref, _) {
         final prefs = ref.watch(sharedPreferencesProvider);
@@ -830,7 +834,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           title: context.l10n.profile_myBadges,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyBadgesPage()))
         ),
-        _buildOptionTile(
+        if (SiteIdentity.supportsLinuxDoServices) _buildOptionTile(
           icon: Symbols.verified_user_rounded,
           iconColor: Colors.green,
           title: context.l10n.profile_trustRequirements,
@@ -855,7 +859,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             MaterialPageRoute(builder: (_) => const ExportHistoryPage()),
           ),
         ),
-        _buildOptionTile(
+        if (SiteIdentity.supportsLinuxDoServices) _buildOptionTile(
           icon: Symbols.explore_rounded,
           iconColor: Colors.deepOrange,
           title: context.l10n.profile_metaverse,
