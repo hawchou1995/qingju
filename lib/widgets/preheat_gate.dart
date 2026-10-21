@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../config/site_identity.dart';
 import '../l10n/s.dart';
+
 import '../pages/about_page.dart';
 import '../pages/network_settings_page/network_settings_page.dart';
-import '../providers/app_icon_provider.dart';
 import '../services/browser_trust_coordinator.dart';
 import '../services/discourse/discourse_service.dart';
 import '../services/emoji_handler.dart';
@@ -32,26 +32,12 @@ class PreheatGate extends StatefulWidget {
 class _PreheatGateState extends State<PreheatGate> {
   late Future<bool> _loadFuture;
   Object? _error;
-  AppIconStyle _iconStyle = AppIconStyle.classic;
 
   @override
   void initState() {
     super.initState();
-    _readIconStyle();
     // 延迟到下一帧执行，确保 context 可用（_preload 内部可能弹 Dialog）
     _loadFuture = Future.microtask(() => _preload());
-  }
-
-  void _readIconStyle() {
-    SharedPreferences.getInstance().then((prefs) {
-      final saved = prefs.getString('pref_app_icon');
-      final style = saved == 'modern'
-          ? AppIconStyle.modern
-          : AppIconStyle.classic;
-      if (mounted && style != _iconStyle) {
-        setState(() => _iconStyle = style);
-      }
-    });
   }
 
   Future<bool> _preload() async {
@@ -124,7 +110,6 @@ class _PreheatGateState extends State<PreheatGate> {
           currentWidget = _PreheatLoading(
             key: const ValueKey('loading'),
             onSkip: _skip,
-            iconStyle: _iconStyle,
           );
         } else if (snapshot.data == true) {
           currentWidget = KeyedSubtree(
@@ -161,10 +146,8 @@ class _PreheatGateState extends State<PreheatGate> {
 
 class _PreheatLoading extends StatefulWidget {
   final VoidCallback? onSkip;
-  final AppIconStyle iconStyle;
 
-  const _PreheatLoading({super.key, this.onSkip, required this.iconStyle});
-
+  const _PreheatLoading({super.key, this.onSkip});
   @override
   State<_PreheatLoading> createState() => _PreheatLoadingState();
 }
@@ -208,10 +191,10 @@ class _PreheatLoadingState extends State<_PreheatLoading> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PreheatLogo(style: widget.iconStyle, size: 108),
+                PreheatLogo(size: 108),
                 const SizedBox(height: 24),
                 Text(
-                  'FluxDO',
+                  SiteIdentity.name,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,

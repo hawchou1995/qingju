@@ -10,7 +10,7 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.29
+        default: qingju-v0.2.30
       prerelease:
         description: 是否发布为预发布（true/false）
         required: true
@@ -205,7 +205,7 @@ jobs:
             - Windows：x64 解压即用。
             - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
 
-            修复移动端中文 Client Hints 导致的 HTTP 请求头异常；应用内部版本为 0.2.29。
-            所有安装包文件名带版本号；发布资产另附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
-            已通过请求头与凭据隔离回归测试，手机完整登录仍需安装新包后验收。
+            本版修复移动端中文 `Sec-CH-UA` 请求头异常，以及 Flutter 预热页仍显示 Linux.do/FluxDO 旧图标和标题。
+            应用内部版本为 0.2.30；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
+            请求头、凭据隔离与预热品牌回归测试已通过；手机完整登录仍需实机验收。
           files: dist/*
