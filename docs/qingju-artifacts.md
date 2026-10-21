@@ -1,3 +1,21 @@
+## GitHub Release：qingju-v0.2.33（正式版）
+
+标签 `qingju-v0.2.33`，提交 `1ab8789c89a95f05158d802b87d475f5317b01b9`，GitHub Actions run `39546252766`（Android、iOS、macOS、Windows、Linux 与 publish 全部 success）。
+
+| 资产 | 字节 | SHA-256 |
+|---|---:|---|
+| `qingju-0.2.33-android-arm64-debug.apk` | 229,745,636 | `e79c8ffed0a7db3e554a9f48fad271f7909b3f557b87d4dd11e1cd1ccd1d3d91` |
+| `qingju-0.2.33-ios-arm64-unsigned.ipa` | 54,088,855 | `221ab9927010e14ad196689dd985c4a926de1875761afc76bd1ff7cf32f9e8ef` |
+| `qingju-0.2.33-macos-arm64-adhoc.zip` | 57,199,077 | `b627f0008263945e61f46ca8a8385fdf241fcce9e8db61e3e94be787626df41e` |
+| `qingju-0.2.33-windows-x64.zip` | 125,450,039 | `dea3d54838f5c4122736124f094ef23c5c66b8b08ca77475e13c18540e29372d` |
+| `qingju-0.2.33-linux-x64.tar.gz` | 242,797,040 | `fa8d6e1aafc00fa762adbe75dfd10bca0ea37513f3b76e2dea53753ab7a1f8ca` |
+
+五份 `SHA256SUMS-<platform>.txt` 均与 GitHub Release 资产 SHA-256 对拍一致；五份 `BUILD-<platform>.txt` 均指向提交 `1ab8789c89a95f05158d802b87d475f5317b01b9`。Android APK 已下载到 `deliverables/qingju-android-0.2.33/`；本地 SHA-256 与发布清单一致，`apksigner verify` 通过，证书 SHA-256 `f441792fdca48edc4a8c6a06a70fe88f075cc420ae4d425f2b8868db97243a30` 与 0.2.32 固定 debug signer 相同。
+
+本版修复 `PreloadedDataService` 首页话题列表并发解析时重复完成 `Completer` 的异步竞态。Android 包为 ARM64 debug 测试签名；不是商店签名包。
+
+---
+
 # 青橘五平台构建产物
 
 源码：分支 `qingju`，提交 `7b9d901a`（应用代码与 `6319b0ec` 相同，后者之后仅改动 Linux CI 脚本）。
