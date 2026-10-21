@@ -10,7 +10,7 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.32
+        default: qingju-v0.2.33
       prerelease:
         description: 是否发布为预发布（true/false）
         required: true
@@ -225,7 +225,7 @@ jobs:
             - Windows：x64 解压即用。
             - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
 
-            本版修复 Android CI debug signer 未通过 Gradle `key.properties` 使用固定 keystore（0.2.31 signer 不匹配，请勿安装），并修复 GitHub OAuth 登录归位、登录标题残留 LINUX.DO 和 Release tag / ARM64 APK 更新解析。
-            应用内部版本为 0.2.32；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
-            当前固定测试证书与 0.2.30/0.2.31 证书不同，首次升级需先卸载旧包；后续同证书构建可覆盖安装。真实 GitHub 账号登录仍需实机验收。
+            本版修复 `PreloadedDataService` 首页话题列表并发解析时重复完成 Future 的异步竞态；同时保留 0.2.32 的固定 Android debug signer、GitHub OAuth 登录归位、登录标题与 Release tag / ARM64 APK 更新解析修复。
+            应用内部版本为 0.2.33；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
+            Android 固定测试证书与 0.2.30/0.2.31 不同，首次升级需先卸载旧包；0.2.32 及之后同证书构建可覆盖安装。真实 GitHub OAuth 账号登录仍需实机验收。
           files: dist/*

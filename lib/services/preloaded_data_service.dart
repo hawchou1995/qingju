@@ -869,11 +869,13 @@ class PreloadedDataService {
   }
 
   void _decodeTopicListAsync(String rawJson) {
-    _topicListResponseCompleter ??= Completer<TopicListResponse?>();
+    final completer = _topicListResponseCompleter ??=
+        Completer<TopicListResponse?>();
     compute(_decodeTopicListInIsolate, rawJson)
         .then((decoded) {
+          if (!_ownsTopicListResponseCompleter(completer)) return;
           if (decoded == null) {
-            _topicListResponseCompleter?.complete(null);
+            completer.complete(null);
             return;
           }
           _topicListData = decoded;
@@ -884,26 +886,41 @@ class PreloadedDataService {
           debugPrint(
             '[PreloadedData] topic_list 解析成功 (async), topics=$topicsCount',
           );
-          _parseTopicListResponseAsync(decoded);
+          _parseTopicListResponseAsync(decoded, completer: completer);
         })
         .catchError((e) {
+          if (!_ownsTopicListResponseCompleter(completer)) return;
           debugPrint('[PreloadedData] 异步解析 topic_list 失败: $e');
-          _topicListResponseCompleter?.complete(null);
+          completer.complete(null);
         });
   }
 
-  void _parseTopicListResponseAsync(Map<String, dynamic> data) {
-    _topicListResponseCompleter ??= Completer<TopicListResponse?>();
+  void _parseTopicListResponseAsync(
+    Map<String, dynamic> data, {
+    Completer<TopicListResponse?>? completer,
+  }) {
+    final responseCompleter =
+        completer ??
+        (_topicListResponseCompleter ??= Completer<TopicListResponse?>());
     compute(_parseTopicListInIsolate, data)
         .then((result) {
+          if (!_ownsTopicListResponseCompleter(responseCompleter)) return;
           _cachedTopicListResponse = result;
           debugPrint('[PreloadedData] TopicListResponse 异步缓存成功');
-          _topicListResponseCompleter?.complete(result);
+          responseCompleter.complete(result);
         })
         .catchError((e) {
+          if (!_ownsTopicListResponseCompleter(responseCompleter)) return;
           debugPrint('[PreloadedData] 异步解析 TopicListResponse 失败: $e');
-          _topicListResponseCompleter?.complete(null);
+          responseCompleter.complete(null);
         });
+  }
+
+  bool _ownsTopicListResponseCompleter(
+    Completer<TopicListResponse?> completer,
+  ) {
+    return identical(_topicListResponseCompleter, completer) &&
+        !completer.isCompleted;
   }
 
   Future<void> _decodeTopicTrackingStatesAsync() async {
@@ -920,7 +937,10 @@ class PreloadedDataService {
     final completer = Completer<List<Map<String, dynamic>>?>();
     _topicTrackingStatesCompleter = completer;
     try {
-      final decoded = await compute(_decodeTopicTrackingStatesInIsolate, rawJson);
+      final decoded = await compute(
+        _decodeTopicTrackingStatesInIsolate,
+        rawJson,
+      );
       _topicTrackingStates = decoded;
       _topicTrackingStatesRawJson = null;
       debugPrint(
@@ -1036,7 +1056,8 @@ String? _extractPluginCandidateAround(String html, int pluginIndex) {
   }
 
   var end = pluginIndex + '/plugins/'.length;
-  while (end < html.length && !_isPluginCandidateBoundary(html.codeUnitAt(end))) {
+  while (end < html.length &&
+      !_isPluginCandidateBoundary(html.codeUnitAt(end))) {
     end++;
   }
 
