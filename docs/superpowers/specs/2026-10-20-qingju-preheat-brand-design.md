@@ -22,7 +22,7 @@ Android 12+ 的系统 splash 与 Flutter 预热页是两个不同阶段：前者
 
 ## 组件与数据流
 
-`PreheatGate` 的加载分支继续创建 `_PreheatLoading`；该组件显示 `PreheatLogo` 与标题。`PreheatLogo` 使用项目现有 SVG asset，由 `flutter_svg` 渲染，并以 Flutter 动画包装以保持启动过渡。标题直接读取 `SiteIdentity.name`，品牌单一事实源继续位于 `lib/config/site_identity.dart`。
+`PreheatGate` 的加载分支继续创建 `_PreheatLoading`；该组件显示 `PreheatLogo` 与标题。`PreheatLogo` 使用项目现有 `assets/logo.svg`，通过 `jovial_svg` 的 `ScalableImageSource.fromSvg` 与 `ScalableImageWidget.fromSISource` 渲染，并以 Flutter 动画包装以保持启动过渡。标题直接读取 `SiteIdentity.name`，品牌单一事实源继续位于 `lib/config/site_identity.dart`。
 
 ## 验证策略
 
