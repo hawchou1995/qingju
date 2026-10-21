@@ -10,7 +10,7 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.31
+        default: qingju-v0.2.32
       prerelease:
         description: 是否发布为预发布（true/false）
         required: true
@@ -74,7 +74,14 @@ jobs:
           mkdir -p "$HOME/.android"
           printf '%s' "$QINGJU_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore"
-          keytool -list -storetype JKS -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+          keytool -list -storetype JKS -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null 2>&1
+          {
+            printf 'storeFile=%s\n' "$HOME/.android/debug.keystore"
+            printf 'keyAlias=androiddebugkey\n'
+            printf 'storePassword=android\n'
+            printf 'keyPassword=android\n'
+          } > android/key.properties
+          chmod 600 android/key.properties
       - name: Android Rust
         if: matrix.platform == 'android'
         run: |
@@ -218,7 +225,7 @@ jobs:
             - Windows：x64 解压即用。
             - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
 
-            本版修复 Android CI debug 测试签名不稳定、GitHub OAuth 登录成功后未回到论坛首页、登录标题残留 LINUX.DO，以及 Release tag / ARM64 APK 更新解析。
-            应用内部版本为 0.2.31；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
-            当前固定测试证书与 0.2.30 证书不同，首次升级需先卸载旧包；后续同证书构建可覆盖安装。真实 GitHub 账号登录仍需实机验收。
+            本版修复 Android CI debug signer 未通过 Gradle `key.properties` 使用固定 keystore（0.2.31 signer 不匹配，请勿安装），并修复 GitHub OAuth 登录归位、登录标题残留 LINUX.DO 和 Release tag / ARM64 APK 更新解析。
+            应用内部版本为 0.2.32；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
+            当前固定测试证书与 0.2.30/0.2.31 证书不同，首次升级需先卸载旧包；后续同证书构建可覆盖安装。真实 GitHub 账号登录仍需实机验收。
           files: dist/*
