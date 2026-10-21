@@ -81,6 +81,60 @@ class UpdateInfo {
       );
 }
 
+/// GitHub Release tag、版本号与 APK 架构的纯解析逻辑。
+class GitHubReleaseParser {
+  GitHubReleaseParser._();
+
+  /// 从青橘或传统 v 前缀 tag 中提取三段或四段数字版本。
+  static String normalizeTag(String tag) {
+    var version = tag.trim();
+    for (final prefix in const ['qingju-v', 'v', 'qingju-']) {
+      if (version.startsWith(prefix)) {
+        version = version.substring(prefix.length);
+        break;
+      }
+    }
+
+    if (!RegExp(r'^\d+(?:\.\d+){2,3}$').hasMatch(version)) {
+      throw FormatException('无效的 Release 版本 tag', tag);
+    }
+    return version;
+  }
+
+  /// 逐数字段比较版本号。
+  static int compareVersions(String left, String right) {
+    final leftParts = left.split('.').map(int.parse).toList();
+    final rightParts = right.split('.').map(int.parse).toList();
+    final count = leftParts.length > rightParts.length
+        ? leftParts.length
+        : rightParts.length;
+
+    for (var i = 0; i < count; i++) {
+      final leftPart = i < leftParts.length ? leftParts[i] : 0;
+      final rightPart = i < rightParts.length ? rightParts[i] : 0;
+      if (leftPart != rightPart) return leftPart.compareTo(rightPart);
+    }
+    return 0;
+  }
+
+  /// 从 Release APK 文件名解析设备 ABI。
+  static String? architectureFromAsset(String fileName) {
+    const architectures = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
+    for (final architecture in architectures) {
+      if (fileName.contains(architecture)) return architecture;
+    }
+
+    if (RegExp(
+      r'(?:^|[-_])android-arm64(?:-debug)?\.apk$',
+      caseSensitive: false,
+    ).hasMatch(fileName)) {
+      return 'arm64-v8a';
+    }
+    if (fileName.contains('x86')) return 'x86_64';
+    return null;
+  }
+}
+
 /// 应用更新检查服务
 class UpdateService {
   static const String _repository = 'hawchou1995/qingju';
@@ -334,7 +388,9 @@ class UpdateService {
 
   /// 解析更新信息
   UpdateInfo _parseUpdateInfo(Map<String, dynamic> data, String currentVersion) {
-    final remoteVersion = (data['tag_name'] as String).replaceAll('v', '');
+    final remoteVersion = GitHubReleaseParser.normalizeTag(
+      data['tag_name'] as String,
+    );
     final releaseUrl = data['html_url'] as String;
     var releaseNotes = data['body'] as String? ?? '';
 
@@ -400,13 +456,7 @@ class UpdateService {
 
   /// 从 APK 文件名中提取架构
   String? _extractArchitecture(String fileName) {
-    const architectures = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
-    for (final arch in architectures) {
-      if (fileName.contains(arch)) {
-        return arch;
-      }
-    }
-    return null;
+    return GitHubReleaseParser.architectureFromAsset(fileName);
   }
 
   /// 获取匹配当前设备架构的 APK 资源
@@ -430,14 +480,6 @@ class UpdateService {
   /// - 0: v1 == v2
   /// - 负数: v1 < v2
   int _compareVersions(String v1, String v2) {
-    final parts1 = v1.split('.').map(int.parse).toList();
-    final parts2 = v2.split('.').map(int.parse).toList();
-
-    for (int i = 0; i < 3; i++) {
-      final p1 = i < parts1.length ? parts1[i] : 0;
-      final p2 = i < parts2.length ? parts2[i] : 0;
-      if (p1 != p2) return p1.compareTo(p2);
-    }
-    return 0;
+    return GitHubReleaseParser.compareVersions(v1, v2);
   }
 }

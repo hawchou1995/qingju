@@ -1,7 +1,7 @@
 name: fluxdo
 description: "青橘社区（qingju.me）第三方客户端，基于 FluxDO 二开"
 publish_to: 'none'
-version: 0.2.30+2026102101
+version: 0.2.31+2026102102
 
 environment:
   sdk: ^3.10.4

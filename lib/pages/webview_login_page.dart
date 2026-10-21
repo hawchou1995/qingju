@@ -5,13 +5,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:app_icons/app_icons.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:m3e_ui/m3e_ui.dart';
+import '../config/site_identity.dart';
 import '../constants.dart';
 import '../providers/preferences_provider.dart';
 import '../services/credential_store_service.dart';
+import '../services/github_oauth_return.dart';
 import '../services/auth_session.dart';
 import '../services/discourse/discourse_service.dart';
 import '../services/preloaded_data_service.dart';
@@ -52,6 +55,8 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
   InAppWebViewController? _controller;
   bool _isLoading = true;
   bool _loginHandled = false;
+  bool _githubOAuthFlowActive = false;
+  bool _githubOAuthProbeInFlight = false;
   bool _loginInProgress = false;
   bool _isCompletingLogin = false;
   String? _lastHomeResponseUrl;
@@ -98,7 +103,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.webviewLogin_title),
+        title: Text(context.l10n.webviewLogin_title(SiteIdentity.name)),
         actions: [
           IconButton(
             icon: const Icon(Symbols.content_paste_rounded),
@@ -259,20 +264,26 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
                           });
                         }
                       },
-                      onLoadStart: (controller, url) => setState(() {
-                        _isLoading = true;
-                        _url = url?.toString() ?? '';
-                        _lastHomeResponseUrl = null;
-                      }),
+                      onLoadStart: (controller, url) {
+                        final rawUrl = url?.toString() ?? '';
+                        _trackGithubOAuthNavigation(rawUrl);
+                        setState(() {
+                          _isLoading = true;
+                          _url = rawUrl;
+                          _lastHomeResponseUrl = null;
+                        });
+                      },
                       onProgressChanged: (controller, progress) =>
                           setState(() => _progress = progress / 100),
                       onLoadResource: (controller, resource) {
                         _handleLoadedResource(controller, resource);
                       },
                       onLoadStop: (controller, url) async {
+                        final rawUrl = url?.toString();
+                        _trackGithubOAuthNavigation(rawUrl);
                         setState(() {
                           _isLoading = false;
-                          _url = url?.toString() ?? '';
+                          _url = rawUrl ?? '';
                         });
                         _recheckCount = 0;
                         await WebViewSettings.injectScrollFix(controller);
@@ -280,20 +291,29 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
                         // 自动填充登录表单
                         await _autoFillLoginForm(controller, url);
                         // 自动检测登录状态
-                        await _checkLoginStatus(
-                          controller,
-                          currentUrl: url?.toString(),
-                        );
+                        await _checkLoginStatus(controller, currentUrl: rawUrl);
+                        if (!_loginHandled) {
+                          await _recoverGithubOAuthSession(controller, rawUrl);
+                        }
                       },
                       onUpdateVisitedHistory: (controller, url, isReload) {
-                        if (!_loginHandled && isReload != true) {
-                          // SPA 路由变化时也尝试检测登录状态
-                          _recheckCount = 0;
-                          _checkLoginStatus(
+                        final rawUrl = url?.toString();
+                        _trackGithubOAuthNavigation(rawUrl);
+                        if (_loginHandled || isReload == true) return;
+
+                        _recheckCount = 0;
+                        unawaited(() async {
+                          await _checkLoginStatus(
                             controller,
-                            currentUrl: url?.toString(),
+                            currentUrl: rawUrl,
                           );
-                        }
+                          if (!_loginHandled) {
+                            await _recoverGithubOAuthSession(
+                              controller,
+                              rawUrl,
+                            );
+                          }
+                        }());
                       },
                     ),
                     getController: () => _controller,
@@ -471,6 +491,71 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
       })();
     ''',
     );
+  }
+
+  void _trackGithubOAuthNavigation(String? rawUrl) {
+    final uri = Uri.tryParse(rawUrl ?? '');
+    if (uri == null || !SiteIdentity.isCredentialOrigin(uri)) return;
+
+    if (uri.path == '/auth/github' ||
+        uri.path.startsWith('/auth/github/callback')) {
+      _githubOAuthFlowActive = true;
+    } else if (uri.path == '/login') {
+      _githubOAuthFlowActive = false;
+    }
+  }
+
+  Future<void> _recoverGithubOAuthSession(
+    InAppWebViewController controller,
+    String? currentUrl,
+  ) async {
+    if (!mounted ||
+        _loginHandled ||
+        !_githubOAuthFlowActive ||
+        _githubOAuthProbeInFlight ||
+        !isGithubHostUrl(currentUrl)) {
+      return;
+    }
+
+    _githubOAuthProbeInFlight = true;
+    try {
+      await BoundarySyncService.instance.syncFromWebView(
+        currentUrl: AppConstants.baseUrl,
+        controller: controller,
+        cookieNames: CookieJarService.authCookieNames,
+        allowLowConfidenceSessionCookies: true,
+        requestGeneration: _flowGeneration,
+      );
+
+      final response = await _service.dio.get(
+        '/session/current.json',
+        queryParameters: {'_': DateTime.now().millisecondsSinceEpoch},
+        options: Options(
+          receiveTimeout: const Duration(seconds: 8),
+          extra: const {'skipAuthCheck': true, 'skipCsrf': true},
+        ),
+      );
+      final username = currentUsernameFromSessionResponse(response.data);
+      if (username == null ||
+          !AuthSession().isValid(_flowGeneration) ||
+          !mounted) {
+        return;
+      }
+
+      debugPrint('[Login] GitHub OAuth 已建立青橘会话，返回论坛首页');
+      _githubOAuthFlowActive = false;
+      await controller.loadUrl(
+        urlRequest: URLRequest(url: WebUri(AppConstants.baseUrl)),
+      );
+    } on DioException catch (error) {
+      debugPrint('[Login] GitHub OAuth session probe failed: ${error.type}');
+    } catch (error) {
+      debugPrint(
+        '[Login] GitHub OAuth session probe failed: ${error.runtimeType}',
+      );
+    } finally {
+      _githubOAuthProbeInFlight = false;
+    }
   }
 
   /// 检测登录状态，登录成功自动关闭
