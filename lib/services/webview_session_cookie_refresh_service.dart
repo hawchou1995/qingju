@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../constants.dart';
+import '../config/site_identity.dart';
 import '../utils/frame_jank_monitor.dart';
 import 'log/log_writer.dart';
 import 'network/cookie/boundary_sync_service.dart';
@@ -28,6 +29,12 @@ class SessionBootstrapResult {
       status = null,
       phase = null;
 
+  const SessionBootstrapResult.unsupportedSite()
+    : ok = false,
+      cfBlocked = false,
+      status = null,
+      phase = 'unsupported_site';
+
   const SessionBootstrapResult.failure({
     this.cfBlocked = false,
     this.status,
@@ -43,8 +50,10 @@ class SessionBootstrapResult {
   /// 触发失败的 HTTP 状态码(如有)。
   final int? status;
 
-  /// 失败阶段(home/post/exception/timeout/controller 等),便于诊断。
+  /// 触发失败阶段，或 `unsupported_site` 表示此站点没有该能力。
   final String? phase;
+
+  bool get isUnsupportedSite => !ok && phase == 'unsupported_site';
 
   @override
   String toString() =>
@@ -104,6 +113,7 @@ class WebViewSessionCookieRefreshService {
   /// 数小时不停 → CPU 常驻 100%+、打字/滚动被平台主线程 WebView
   /// 创建销毁反复打断。指数退避把"永不成功"场景压到与成功 TTL 同频。
   int _failureStreak = 0;
+  bool _unsupportedSiteSkipLogged = false;
 
   /// 上次 fingerprint 上报 404 → 判定弹药过期(预加载插件候选 / WebView
   /// 缓存里的旧插件 JS 提取出的端点已被站点轮换)。置位后下一次 bootstrap
@@ -115,6 +125,22 @@ class WebViewSessionCookieRefreshService {
     if (_failureStreak <= 1) return _attemptCooldown;
     final shifted = _attemptCooldown * (1 << (_failureStreak - 1).clamp(0, 5));
     return shifted > _maxFailureCooldown ? _maxFailureCooldown : shifted;
+  }
+
+  SessionBootstrapResult _unsupportedSiteResult({required String reason}) {
+    if (!_unsupportedSiteSkipLogged) {
+      _unsupportedSiteSkipLogged = true;
+      _logEnsureEvent(
+        event: 'webview_session_sync_skipped',
+        reason: reason,
+        level: 'info',
+        extra: const {
+          'skipReason': 'site_not_supported',
+          'phase': 'unsupported_site',
+        },
+      );
+    }
+    return const SessionBootstrapResult.unsupportedSite();
   }
 
   DateTime? get lastSuccessAt => _lastSuccessAt;
@@ -168,6 +194,9 @@ class WebViewSessionCookieRefreshService {
     String reason = 'unknown',
     bool force = false,
   }) async {
+    if (!SiteIdentity.supportsLinuxDoServices) {
+      return _unsupportedSiteResult(reason: reason);
+    }
     final startedAt = DateTime.now();
     _logEnsureEvent(
       event: 'webview_session_sync_started',
@@ -269,8 +298,8 @@ class WebViewSessionCookieRefreshService {
     late final Future<SessionBootstrapResult> future;
     future = _refreshBrowserSession(reason: reason)
         .then((result) {
-          // 失败退避计数:这里只会看到真正执行过的尝试(no_t / TTL /
-          // cooldown / join 都在上面早退,不进本回调)。
+          // 失败退避仅计入实际执行过 bootstrap 的尝试；
+          // no_t、已同步、cooldown 与 join 均在上方提前返回。
           if (result.ok) {
             _failureStreak = 0;
           } else {
@@ -284,6 +313,7 @@ class WebViewSessionCookieRefreshService {
               'ok': result.ok,
               if (result.cfBlocked) 'cfBlocked': true,
               if (result.status != null) 'status': result.status,
+              if (result.phase != null) 'phase': result.phase,
               if (!result.ok) 'failureStreak': _failureStreak,
               'elapsedMs': DateTime.now().difference(startedAt).inMilliseconds,
             },
@@ -509,6 +539,9 @@ class WebViewSessionCookieRefreshService {
     bool Function()? isCancelled,
     Future<void>? cancellationSignal,
   }) async {
+    if (!SiteIdentity.supportsLinuxDoServices) {
+      return _unsupportedSiteResult(reason: reason);
+    }
     if (isCancelled?.call() == true) {
       return const SessionBootstrapResult.failure(phase: 'cancelled');
     }

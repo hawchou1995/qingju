@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../config/site_identity.dart';
 import '../../constants.dart';
 import '../../services/auth_session.dart';
 import '../../services/cf_challenge_service.dart';
@@ -588,8 +589,9 @@ document.close();
     // 不能加载完整 Discourse 前端，低版本 iOS/WKWebView 兼容性不够稳定。
     try {
       final controller = _controller;
-      var bootstrapped = false;
-      if (controller != null) {
+      final runtimeCookieSyncSupported = SiteIdentity.supportsLinuxDoServices;
+      bool? bootstrapOk;
+      if (runtimeCookieSyncSupported && controller != null) {
         final bootstrapResult = await WebViewSessionCookieRefreshService
             .instance
             .runOnController(
@@ -597,35 +599,38 @@ document.close();
               reason: 'native_login_success',
               pluginCandidates: PreloadedDataService().pluginCandidatesSync,
             );
-        bootstrapped = bootstrapResult.ok;
+        bootstrapOk = bootstrapResult.ok;
       }
       await BoundarySyncService.instance.syncFromWebView(
         controller: controller,
-        currentUrl: 'https://linux.do/',
+        currentUrl: AppConstants.baseUrl,
         cookieNames: null,
         allowLowConfidenceSessionCookies: true,
         requestGeneration: _flowGeneration,
         trusted: true,
       );
-      final runtimeDetails = await CookieJarService()
-          .getCookieDiagnosticsForRequest(
-            Uri.parse(AppConstants.baseUrl),
-            names: const {'_rt'},
+      final runtimeDetails = runtimeCookieSyncSupported
+          ? await CookieJarService().getCookieDiagnosticsForRequest(
+              Uri.parse(AppConstants.baseUrl),
+              names: const {'_rt'},
+            )
+          : const <Map<String, dynamic>>[];
+      final hasRuntimeCookie =
+          runtimeCookieSyncSupported &&
+          runtimeDetails.any(
+            (cookie) => (cookie['valueLength'] as int? ?? 0) > 0,
           );
-      final hasRuntimeCookie = runtimeDetails.any(
-        (cookie) => (cookie['valueLength'] as int? ?? 0) > 0,
-      );
       final tToken = await CookieJarService().getTToken();
       if (hasRuntimeCookie) {
         WebViewSessionCookieRefreshService.instance.markSynced(
           reason: 'native_login_success',
           tToken: tToken,
-          hasRuntimeCookie: hasRuntimeCookie,
+          hasRuntimeCookie: true,
         );
       }
       await WebViewSessionCookieRefreshService.instance.logCookieSummary(
         reason: 'native_login_success',
-        bootstrapOk: bootstrapped,
+        bootstrapOk: bootstrapOk,
       );
     } catch (e) {
       debugPrint('[WebViewLogin] syncFromWebView 失败: $e');

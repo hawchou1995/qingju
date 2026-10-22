@@ -149,9 +149,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
       body: Column(
         children: [
           if (_isLoading || _isCompletingLogin)
-            M3eLinearProgress(
-              value: _isCompletingLogin ? null : _progress,
-            ),
+            M3eLinearProgress(value: _isCompletingLogin ? null : _progress),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -732,13 +730,16 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
     const bootstrapTimeout = Duration(seconds: 8);
     final startedAt = DateTime.now();
 
-    var fingerprintObserved = _fingerprintDone;
+    final runtimeCookieSyncNotRequired = !SiteIdentity.supportsLinuxDoServices;
+    var fingerprintObserved = runtimeCookieSyncNotRequired
+        ? false
+        : _fingerprintDone;
     var bootstrapAttempted = false;
     var bootstrapOk = false;
     List<Map<String, dynamic>> runtimeDetails = const [];
 
     try {
-      if (!fingerprintObserved) {
+      if (!runtimeCookieSyncNotRequired && !fingerprintObserved) {
         fingerprintObserved = await _waitForFingerprintPost(
           timeout: fingerprintWait,
         );
@@ -770,7 +771,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
       runtimeDetails = await _runtimeCookieDiagnostics();
       var hasRuntimeCookie = _hasRuntimeCookie(runtimeDetails);
 
-      if (!hasRuntimeCookie) {
+      if (!hasRuntimeCookie && !runtimeCookieSyncNotRequired) {
         bootstrapAttempted = true;
         final bootstrapResult = await WebViewSessionCookieRefreshService
             .instance
@@ -811,12 +812,13 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
         return false;
       }
 
-      final browserSessionSynced = hasRuntimeCookie;
-      if (browserSessionSynced) {
+      final browserSessionSynced =
+          hasRuntimeCookie || runtimeCookieSyncNotRequired;
+      if (hasRuntimeCookie) {
         WebViewSessionCookieRefreshService.instance.markSynced(
           reason: 'webview_login_success',
           tToken: token,
-          hasRuntimeCookie: hasRuntimeCookie,
+          hasRuntimeCookie: true,
         );
       }
       await WebViewSessionCookieRefreshService.instance.logCookieSummary(
@@ -832,6 +834,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
         hasRuntimeCookie: hasRuntimeCookie,
         runtimeCookieDetails: runtimeDetails,
         elapsedMs: DateTime.now().difference(startedAt).inMilliseconds,
+        runtimeCookieSyncNotRequired: runtimeCookieSyncNotRequired,
       );
       return browserSessionSynced;
     } catch (e) {
@@ -844,6 +847,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
         hasRuntimeCookie: _hasRuntimeCookie(runtimeDetails),
         runtimeCookieDetails: runtimeDetails,
         elapsedMs: DateTime.now().difference(startedAt).inMilliseconds,
+        runtimeCookieSyncNotRequired: runtimeCookieSyncNotRequired,
         error: e.toString(),
       );
       debugPrint('[Login] 登录运行态 Cookie 同步失败: $e');
@@ -882,10 +886,14 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
     required bool hasRuntimeCookie,
     required List<Map<String, dynamic>> runtimeCookieDetails,
     required int elapsedMs,
+    bool runtimeCookieSyncNotRequired = false,
     String? skippedReason,
     String? error,
   }) {
-    final ok = error == null && skippedReason == null && hasRuntimeCookie;
+    final ok =
+        error == null &&
+        skippedReason == null &&
+        (hasRuntimeCookie || runtimeCookieSyncNotRequired);
     LogWriter.instance.write({
       'timestamp': DateTime.now().toIso8601String(),
       'level': ok ? 'info' : 'warning',
@@ -898,6 +906,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
       'bootstrapAttempted': bootstrapAttempted,
       'bootstrapOk': bootstrapOk,
       'hasRuntimeCookie': hasRuntimeCookie,
+      'runtimeCookieSyncNotRequired': runtimeCookieSyncNotRequired,
       'runtimeCookieNames': _runtimeCookieNames.toList(growable: false),
       'runtimeCookieDetails': runtimeCookieDetails,
       'elapsedMs': elapsedMs,
@@ -1028,6 +1037,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
   }
 
   void _injectFingerprintHook(InAppWebViewController controller) {
+    if (!SiteIdentity.supportsLinuxDoServices) return;
     controller.evaluateJavascript(
       source: '''
       (function() {

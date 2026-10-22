@@ -48,6 +48,7 @@ Topic _bookmarkTopic({
 
 Future<ProviderContainer> _createContainer({
   List<String>? suggestionRequests,
+  bool seedBookmarks = true,
 }) async {
   SharedPreferences.setMockInitialValues({
     'pref_bookmarks_open_mode': 'tabbedWorkspace',
@@ -102,17 +103,19 @@ Future<ProviderContainer> _createContainer({
       bookmarkableType: 'Topic',
     ),
   ];
-  await repo.upsertEntries('test_user', [
-    for (final t in preset)
-      BookmarkCacheEntry(
-        bookmarkId: t.bookmarkId!,
-        topicId: t.id,
-        nameNormalized: t.bookmarkName,
-        updatedAt: DateTime.utc(2026, 5, 1),
-        cachedAt: DateTime.utc(2026, 5, 1),
-        payload: payloadOf(t, t.bookmarkId!),
-      ),
-  ]);
+  if (seedBookmarks) {
+    await repo.upsertEntries('test_user', [
+      for (final t in preset)
+        BookmarkCacheEntry(
+          bookmarkId: t.bookmarkId!,
+          topicId: t.id,
+          nameNormalized: t.bookmarkName,
+          updatedAt: DateTime.utc(2026, 5, 1),
+          cachedAt: DateTime.utc(2026, 5, 1),
+          payload: payloadOf(t, t.bookmarkId!),
+        ),
+    ]);
+  }
 
   return ProviderContainer(
     overrides: [
@@ -145,9 +148,13 @@ Future<ProviderContainer> _createContainer({
 Future<ProviderContainer> _createContainerForWidgetTest(
   WidgetTester tester, {
   List<String>? suggestionRequests,
+  bool seedBookmarks = true,
 }) async {
   final container = (await tester.runAsync(
-    () => _createContainer(suggestionRequests: suggestionRequests),
+    () => _createContainer(
+      suggestionRequests: suggestionRequests,
+      seedBookmarks: seedBookmarks,
+    ),
   ))!;
   ProviderSubscription<AsyncValue<List<Topic>>>? sub;
   await tester.runAsync(() async {
@@ -238,6 +245,30 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  testWidgets('手机端卸载书签页不会在 dispose 中读取失效 ref', (tester) async {
+    PlatformUtils.debugDesktopOverride = false;
+    addTearDown(() => PlatformUtils.debugDesktopOverride = null);
+
+    final container = await _createContainerForWidgetTest(
+      tester,
+      seedBookmarks: false,
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const _BookmarksPageTestApp(),
+      ),
+    );
+    await _pumpPage(tester);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('离开书签页时会清空工作区标签', (tester) async {

@@ -382,10 +382,12 @@ class BrowserTrustCoordinator {
         blocked: bootstrap,
       );
     }
-    final synced = bootstrap.ok;
+    final sessionSyncNotRequired = bootstrap.isUnsupportedSite;
+    final synced = bootstrap.ok || sessionSyncNotRequired;
     _log(
       'browser trust session bootstrap end reason=$reason '
-      'synced=$synced cfBlocked=${bootstrap.cfBlocked} '
+      'synced=$synced sessionSyncNotRequired=$sessionSyncNotRequired '
+      'phase=${bootstrap.phase} cfBlocked=${bootstrap.cfBlocked} '
       'elapsedMs=${stopwatch.elapsedMilliseconds} '
       'sessionElapsedMs=${stopwatch.elapsedMilliseconds - sessionStartedAt}',
       level: synced ? 'info' : 'warning',
