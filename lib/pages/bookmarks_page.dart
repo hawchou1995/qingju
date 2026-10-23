@@ -34,12 +34,11 @@ import '../widgets/search/user_content_search_view.dart';
 import 'topics_page.dart';
 import 'topic_detail_page/topic_detail_page.dart';
 
-typedef BookmarksWorkspaceTopicPageBuilder =
-    Widget Function(
-      BuildContext context,
-      BookmarkWorkspaceTopicTab tab,
-      bool parentActive,
-    );
+typedef BookmarksWorkspaceTopicPageBuilder = Widget Function(
+  BuildContext context,
+  BookmarkWorkspaceTopicTab tab,
+  bool parentActive,
+);
 
 /// 我的书签页面
 class BookmarksPage extends ConsumerStatefulWidget {
@@ -77,8 +76,7 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
       final shortcutScopeBinding = ShortcutScopeBinding(
         ref: ref,
         scope: ShortcutScope.context,
-        // 底栏 tab 形态挂在 IndexedStack 里:不活跃时注册失效,否则截胡
-        // 其他 tab 的 ESC(共享根路由,路由过滤分不出活跃 tab)。
+        // 底栏 tab 形态挂在 IndexedStack 里：不活跃时注销，避免截胡其他 tab 的 Esc。
         enabled: () => widget.isActive,
       );
       _shortcutScopeBinding = shortcutScopeBinding;
@@ -913,9 +911,8 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
                   }) {
                     ref
                         .read(
-                          userContentSearchProvider(
-                            SearchInType.bookmarks,
-                          ).notifier,
+                          userContentSearchProvider(SearchInType.bookmarks)
+                              .notifier,
                         )
                         .exitSearchMode();
                     _openWorkspaceTab(

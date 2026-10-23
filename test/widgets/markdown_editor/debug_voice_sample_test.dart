@@ -81,15 +81,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('生成测试音频(debug)'), findsOneWidget);
-    // runAsync:合成写文件是真实 IO
+    final debugButton = find.widgetWithText(
+      TextButton,
+      '生成测试音频(debug)',
+    );
+    await tester.ensureVisible(debugButton);
+    await tester.pumpAndSettle();
+    final dynamic onGenerate = tester.widget<TextButton>(debugButton).onPressed;
+    expect(onGenerate, isNotNull);
     await tester.runAsync(() async {
-      await tester.tap(find.text('生成测试音频(debug)'));
-      await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await onGenerate();
     });
     await tester.pumpAndSettle();
 
-    expect(find.text('发送'), findsOneWidget, reason: '进入 recorded 态');
+    final textSnapshot = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((widget) => widget.data ?? '')
+        .join(' | ');
+    expect(find.text('发送'), findsOneWidget, reason: textSnapshot);
     await tester.tap(find.text('发送'));
     await tester.pumpAndSettle();
     expect(sent, isNotNull);
