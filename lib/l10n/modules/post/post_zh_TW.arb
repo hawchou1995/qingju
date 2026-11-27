@@ -55,6 +55,16 @@
   "boost_danmaku": "彈幕",
   "boost_danmakuDismiss": "暫時關閉此貼彈幕",
   "boost_danmakuShow": "顯示此貼彈幕",
+  "github_commentedOn": " 評論於 ",
+  "github_moreFiles": "... 還有 {count} 個檔案",
+  "@github_moreFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "github_viewFullCode": "點選檢視完整程式碼",
   "post_flagMessageUser": "向 @{username} 傳送訊息",
   "@post_flagMessageUser": {
     "placeholders": {
@@ -155,7 +165,6 @@
   "post_solutionUnaccepted": "已取消採納",
   "post_solved": "已解決",
   "post_submitFlag": "提交舉報",
-  "post_tipLdc": "打賞 LDC",
   "post_titleRequired": "請輸入標題",
   "post_todayIsBirthday": "今天是我的生日！",
   "post_todayIsCakeday": "今天是您加入我們社區的紀念日！",

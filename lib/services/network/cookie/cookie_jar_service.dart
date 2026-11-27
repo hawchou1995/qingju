@@ -57,13 +57,9 @@ class CookieJarService {
   /// 当前条目:
   /// - authCookieNames: Discourse 论坛登录 cookie
   /// - cf_clearance: Cloudflare 反爬虫挑战 token
-  /// - linux_do_credit_session_id: LDC 应用 session,主站会读它来显示
-  ///   LDC 积分/绑定状态, WV 缺失会导致 LDC 相关 UI 失效
   static Set<String> criticalCookieNames = {
     ...authCookieNames,
     'cf_clearance',
-    'linux_do_credit_session_id',
-    'linux_do_cdk_session_id',
   };
 
   CookieManager get webViewCookieManager =>

@@ -49,8 +49,6 @@ void main() {
         'current_user_cache',
         'current_user_cache_username',
         'user_summary_cache',
-        'cdk_user_info',
-        'ldc_user_info_username',
         'update_cache',
         'update_etag',
         'sticker_market_groups_cache',

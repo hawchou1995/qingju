@@ -458,25 +458,6 @@ class AppCookieManager extends Interceptor {
       });
     }
 
-    if (options.uri.host == 'connect.linux.do') {
-      final authCookies = requestCookies
-          .where((cookie) => cookie.name == 'auth.session-token')
-          .map(
-            (cookie) =>
-                '${cookie.domain ?? '<host-only>'}|${cookie.path ?? '/'}|len=${cookie.value.length}',
-          )
-          .toList(growable: false);
-      if (authCookies.isNotEmpty) {
-        debugPrint(
-          '[CookieManager] request cookies for connect.linux.do: $authCookies',
-        );
-      } else {
-        debugPrint(
-          '[CookieManager] request cookies for connect.linux.do: <none>',
-        );
-      }
-    }
-
     return cookies;
   }
 

@@ -75,6 +75,7 @@
   "chat_attachCamera": "Camera",
   "chat_attachGallery": "Gallery",
   "chat_attachFile": "File",
+  "chat_thread": "Thread",
   "chat_threadTitle": "Thread",
   "chat_threadReplies": "{count} replies",
   "@chat_threadReplies": {

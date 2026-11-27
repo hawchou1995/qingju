@@ -75,6 +75,7 @@
   "chat_attachCamera": "拍照",
   "chat_attachGallery": "相册",
   "chat_attachFile": "文件",
+  "chat_thread": "线程",
   "chat_threadTitle": "消息串",
   "chat_threadReplies": "{count} 条回复",
   "@chat_threadReplies": {
