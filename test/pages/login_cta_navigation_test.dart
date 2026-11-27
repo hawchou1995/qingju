@@ -117,6 +117,19 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    // 生产登录页在 `onWebViewCreated` 里先注册回调，再等待一次初始 Cookie 回放
+    // （上限 2s，见 `webview_login_page.dart` 的 `_awaitInitialCookieFlush`）
+    // 才发出首个 loadUrl。这里先用可见状态确认 WebView 已创建、回调已接线，
+    // 再用测试虚拟时钟越过这段等待；不真实等待，也不改生产时序。
+    expect(platform.created, isTrue, reason: '登录页必须创建 WebView');
+    expect(
+      platform.controller.handlers.keys,
+      contains('onLoginCredentials'),
+      reason: '登录页必须先接上站点登录表单的凭证回调',
+    );
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+
     // 登录页在 WebView 里实际发出的请求。
     expect(platform.controller.loadRequests, ['https://qingju.me/login']);
     expect(
@@ -199,6 +212,9 @@ class _LoginWebViewPlatform extends InAppWebViewPlatform {
   PlatformInAppWebViewWidget createPlatformInAppWebViewWidget(
     PlatformInAppWebViewWidgetCreationParams params,
   ) => _LoginWebViewWidget(params, this);
+
+  /// 生产登录页的 `onWebViewCreated` 是否已经接线。
+  bool get created => _created;
 
   /// 只接一次生产页面的 `onWebViewCreated`，避免重复创建控制器。
   void scheduleCreate(PlatformInAppWebViewWidgetCreationParams params) {
