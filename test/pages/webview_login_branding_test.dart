@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/config/site_identity.dart';
-import 'package:fluxdo/constants.dart';
 
+/// 站点身份与四语言文案的静态契约。点按未登录入口后真正请求
+/// `https://qingju.me/login` 由 `test/pages/login_cta_navigation_test.dart`
+/// 的 widget 点按测试覆盖（本文件不做源码字符串比对）。
 void main() {
   test('登录工具栏标题使用规范站点身份', () async {
     final source = await File(
@@ -34,20 +36,5 @@ void main() {
         reason: locale,
       );
     }
-  });
-
-  test('未登录入口点击后进入青橘登录地址', () async {
-    final source = await File(
-      'lib/pages/webview_login_page.dart',
-    ).readAsString();
-
-    // 页面实际拼出的地址就是站点登录页，而不是旧站或其他站点。
-    expect(AppConstants.baseUrl, SiteIdentity.baseUrl);
-    expect(
-      Uri.parse('${AppConstants.baseUrl}/login').toString(),
-      'https://qingju.me/login',
-    );
-    expect(source, contains(r"'${AppConstants.baseUrl}/login'"));
-    expect(source.toLowerCase(), isNot(contains('linux.do')));
   });
 }

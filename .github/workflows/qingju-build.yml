@@ -11,7 +11,7 @@ on:
       - 'windows/**'
       - 'assets/**'
       - 'packages/**'
-      - 'core/doh_proxy/**'
+      - 'core/net_core/**'
       - 'pubspec.yaml'
       - '.github/workflows/qingju-build.yml'
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core/doh_proxy
+          workspaces: core/net_core
           key: qingju-${{ matrix.platform }}
       - name: Android Java
         if: matrix.platform == 'android'

@@ -1,34 +1,109 @@
 name: 青橘 Release 构建与发布
 
-# 只用 qingju-v* 标签，避免触发上游 build.yaml 的 v* 发版流水线。
+# 触发面刻意收窄：
+# - 只有 `qingju-v*` 标签或手动 workflow_dispatch 会进入本流水线，任何分支 push
+#   都不会触发（上游 build.yaml 只响应 `v*`，青橘标签不会误触发上游发版）。
+# - 手动运行默认 `build-only`：五端产物只上传为 artifact，不创建 Release、不打标签。
+#   只有显式选择 `publish`（或推 `qingju-v*` 标签）才会运行 publish job。
+# - 版本号没有默认值：未填写时取 `pubspec.yaml` 的版本，且必须与 pubspec 完全一致。
 on:
   push:
     tags:
       - 'qingju-v*'
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'build-only 只构建五端产物；publish 构建后创建 GitHub Release'
+        type: choice
+        options:
+          - build-only
+          - publish
+        default: build-only
       version:
-        description: 发布标签（qingju-v 前缀）
-        required: true
-        default: qingju-v0.2.34
+        description: '目标版本（qingju-vX.Y.Z 或 X.Y.Z）；留空则用 pubspec.yaml 的版本'
+        required: false
+        default: ''
       prerelease:
-        description: 是否发布为预发布（true/false）
-        required: true
-        default: 'false'
+        description: '发布为预发布（仅 publish 模式生效）'
+        type: boolean
+        default: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: qingju-release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  FLUXDO_LINUX_BUILD_FLAGS: ''
-  QINGJU_RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
-
 jobs:
+  version:
+    name: 校验版本
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: 解析并校验版本
+        id: resolve
+        env:
+          REQUESTED_VERSION: ${{ github.event.inputs.version }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          pubspec_version="$(sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\)+.*/\1/p' pubspec.yaml | head -n1)"
+          if [ -z "${pubspec_version}" ]; then
+            echo '::error::无法从 pubspec.yaml 读取版本'
+            exit 1
+          fi
+          if [ "${REF_TYPE}" = "tag" ]; then
+            version="${REF_NAME#qingju-v}"
+          elif [ -n "${REQUESTED_VERSION}" ]; then
+            version="${REQUESTED_VERSION#qingju-v}"
+          else
+            version="${pubspec_version}"
+          fi
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::版本格式无效（需要 X.Y.Z）：${version}"
+            exit 1
+          fi
+          if [ "${version}" != "${pubspec_version}" ]; then
+            echo "::error::版本与 pubspec.yaml 不一致：请求 ${version}，pubspec ${pubspec_version}"
+            exit 1
+          fi
+          echo "tag=qingju-v${version}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+  # 发版前置门禁：生成 i18n 并跑登录相关测试；不通过则五端构建与发布都不执行。
+  preflight:
+    name: 前置检查（i18n + 登录回归）
+    needs: [version]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          cache: true
+      - name: 生成 i18n 与依赖
+        run: dart tool/project_prep.dart test
+      - name: 登录回归测试
+        run: |
+          flutter test --no-pub \
+            test/pages/webview_login_branding_test.dart \
+            test/pages/login_cta_navigation_test.dart \
+            test/widgets/login_localization_test.dart
+
   build:
+    name: 构建 ${{ matrix.platform }}
+    needs: [version, preflight]
     strategy:
       fail-fast: false
       matrix:
@@ -43,6 +118,8 @@ jobs:
             os: windows-2022
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    env:
+      QINGJU_RELEASE_TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +131,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core/doh_proxy
+          workspaces: core/net_core
           key: qingju-release-${{ matrix.platform }}
       - name: Android Java
         if: matrix.platform == 'android'
@@ -160,8 +237,14 @@ jobs:
           retention-days: 7
 
   linux:
+    name: 构建 linux
+    needs: [version, preflight]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    env:
+      QINGJU_RELEASE_TAG: ${{ needs.version.outputs.tag }}
+      # 便于诊断编译失败：需要时置为 --verbose。
+      FLUXDO_LINUX_BUILD_FLAGS: ${{ vars.FLUXDO_LINUX_BUILD_FLAGS }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -185,11 +268,20 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # 唯一的发布入口：标签推送视为显式许可；手动运行必须显式选择 publish。
   publish:
-    needs: [build, linux]
+    name: 发布 Release
+    needs: [version, preflight, build, linux]
+    # 发布许可：标签推送是显式动作；手动运行必须显式选择 publish 模式。
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish')
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      QINGJU_RELEASE_TAG: ${{ needs.version.outputs.tag }}
+      QINGJU_RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -199,22 +291,14 @@ jobs:
         run: |
           ls -l dist
           cat dist/BUILD-*.txt
-      - name: Resolve tag
-        id: tag
-        run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-          fi
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: 青橘 ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ env.QINGJU_RELEASE_TAG }}
+          name: 青橘 ${{ env.QINGJU_RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
           draft: false
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease }}
           generate_release_notes: true
           body: |
             青橘社区（qingju.me）第三方客户端，基于 FluxDO（GPL-3.0）二开。
@@ -225,7 +309,6 @@ jobs:
             - Windows：x64 解压即用。
             - Linux：x64 压缩包，需兼容的 glibc/GTK3/WPE 环境。
 
-            本版修复 `PreloadedDataService` 首页话题列表并发解析时重复完成 Future 的异步竞态；同时保留 0.2.32 的固定 Android debug signer、GitHub OAuth 登录归位、登录标题与 Release tag / ARM64 APK 更新解析修复。
-            应用内部版本为 0.2.33；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
-            Android 固定测试证书与 0.2.30/0.2.31 不同，首次升级需先卸载旧包；0.2.32 及之后同证书构建可覆盖安装。真实 GitHub OAuth 账号登录仍需实机验收。
+            应用内部版本为 ${{ needs.version.outputs.version }}（与 `pubspec.yaml` 一致）；各安装包文件名带版本号，并附 `BUILD-<platform>.txt` 与 `SHA256SUMS-<platform>.txt`。
+            Android 使用固定测试证书签名；若与此前安装包的签名证书不一致，需先卸载旧包再安装。
           files: dist/*

@@ -158,7 +158,7 @@ class AiPostReviewService {
         return _GuidelinesLoadResult(text: cached, usedCache: true);
       }
       throw AiPostReviewException(
-        '无法获取 Linux.do 社区准则，也没有可用缓存。',
+        '无法获取青橘社区准则，也没有可用缓存。',
         details: '$error\n$stackTrace',
       );
     }
@@ -206,7 +206,7 @@ class AiPostReviewService {
   @visibleForTesting
   static String buildSystemPrompt(String guidelines) {
     return '''
-你是 Linux.do 社区发帖前的本地 AI 审核助手。你的任务是根据社区准则帮助用户发现可能需要修改的地方。
+你是青橘社区发帖前的本地 AI 审核助手。你的任务是根据社区准则帮助用户发现可能需要修改的地方。
 
 硬性要求，必须遵守：
 1. 只输出整体优先级和 1-3 条建议修改方向，不得提供完整改写内容。

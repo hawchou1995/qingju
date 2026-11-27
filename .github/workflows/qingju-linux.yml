@@ -7,7 +7,7 @@ on:
       - 'lib/**'
       - 'linux/**'
       - 'scripts/ci/linux/**'
-      - 'core/doh_proxy/**'
+      - 'core/net_core/**'
       - 'pubspec.yaml'
       - '.github/workflows/qingju-linux.yml'
   workflow_dispatch:
