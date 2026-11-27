@@ -194,10 +194,10 @@ void main() {
   group('PluginRegistry', () {
     tearDown(PluginRegistry.resetOverride);
 
-    test('linux.do 默认注册了回复扣积分插件', () {
+    test('青橘默认不注册回复扣积分插件（断开旧站插件默认注册）', () {
       expect(
         PluginRegistry.plugins.whereType<ReplyCostPlugin>(),
-        isNotEmpty,
+        isEmpty,
       );
     });
 

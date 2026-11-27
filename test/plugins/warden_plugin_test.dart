@@ -185,11 +185,13 @@ void main() {
   group('PluginRegistry.resolveMinPostLength', () {
     tearDown(PluginRegistry.resetOverride);
 
-    test('linux.do 默认注册了 warden 插件', () {
-      expect(PluginRegistry.plugins.whereType<WardenPlugin>(), isNotEmpty);
+    test('青橘默认不注册 warden 插件（断开旧站插件默认注册）', () {
+      expect(PluginRegistry.plugins.whereType<WardenPlugin>(), isEmpty);
     });
 
-    test('真实分类数据：搞七捻三回复要 16 字', () {
+    test('真实分类数据：注入 warden 后搞七捻三回复要 16 字', () {
+      // 青橘默认没有插件；需要插件行为时按站点配置注入，注入路径保持可用。
+      PluginRegistry.overridePlugins(const [WardenPlugin()]);
       final category = Category.fromJson(_categoryJson(minPost: 16));
       expect(
         PluginRegistry.resolveMinPostLength(
