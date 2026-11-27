@@ -192,6 +192,38 @@ jobs:
         run: |
           choco install nasm -y --no-progress
           'C:\Program Files\NASM' >> $env:GITHUB_PATH
+      # 镜像默认 Xcode 为 16.4（MacOSX15.5 / iOS 18.5 SDK），缺少插件所需的新 API：
+      # - video_player_avfoundation 2.12.4：AVAsyncProperty.load(_:isolation:)
+      # - workmanager_apple 0.9.11：BGContinuedProcessingTask（iOS 26 SDK）
+      # 故显式选取镜像已安装的 Xcode 26.x；候选按新到旧固定枚举，全部缺失时明确报错。
+      - name: Select Xcode 26
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: |
+          set -euo pipefail
+          selected=""
+          for candidate in \
+            /Applications/Xcode_26.3.app \
+            /Applications/Xcode_26.2.app \
+            /Applications/Xcode_26.1.1.app \
+            /Applications/Xcode_26.0.1.app; do
+            if [ -d "${candidate}" ]; then
+              selected="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${selected}" ]; then
+            echo '::error::镜像未安装 Xcode 26.x，无法编译依赖 26 SDK 的插件'
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "${selected}"
+          echo "DEVELOPER_DIR=${selected}" >> "${GITHUB_ENV}"
+          echo "已选用 ${selected}"
+          xcodebuild -version
+          echo "macOS SDK: $(xcrun --sdk macosx --show-sdk-version)"
+          if [ "${{ matrix.platform }}" = "ios" ]; then
+            echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          fi
       - name: Apple Rust
         if: matrix.platform == 'ios' || matrix.platform == 'macos'
         run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
