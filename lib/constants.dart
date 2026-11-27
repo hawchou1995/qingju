@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'services/network/client_hints.dart';
+import 'services/network/apple_user_agent.dart';
 import 'config/site_customization.dart';
 import 'config/sites/qingju.dart';
 import 'config/site_identity.dart';
@@ -165,12 +166,8 @@ class AppConstants {
   /// 桌面端暂不发送，WebView2 的品牌列表未实测，留给网络核心按采样模板处理。
   static void _initClientHints() {
     if (!Platform.isAndroid && !Platform.isIOS) return;
-    try {
-      _cachedClientHints = await loadForumClientHints();
-      debugPrint('[AppConstants] Client Hints: $_cachedClientHints');
-    } catch (e) {
-      debugPrint('[AppConstants] 获取 Client Hints 失败: $e');
-    }
+    _cachedClientHints = ClientHints.fromUserAgent(_cachedUserAgent!);
+    debugPrint('[AppConstants] Client Hints: $_cachedClientHints');
   }
 
   /// 获取缓存的 Client Hints 请求头（可能为 null）

@@ -1,118 +1,73 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/services/network/client_hints.dart';
-import 'package:ua_client_hints/ua_client_hints.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('ua_client_hints');
-  final originalHttpOverrides = HttpOverrides.current;
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  late Map<String, Object> metadata;
-
-  setUp(() {
-    // 本组验证真实 IO 传输，禁用 Flutter 测试默认的 HTTP 400 假客户端。
-    HttpOverrides.global = null;
-    metadata = {
-      'appName': '青橘',
-      'appVersion': '0.2.28',
-      'version': '0.2.28',
-      'platform': 'Android',
-      'platformVersion': '14',
-      'architecture': 'arm64-v8a',
-      'model': 'Pixel 8',
-      'device': 'shiba',
-      'brand': 'Google',
-      'mobile': true,
-    };
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      expect(call.method, 'getInfo');
-      return metadata;
-    });
-  });
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    HttpOverrides.global = originalHttpOverrides;
-  });
-
-  test('旧依赖输出逐字复现日志中的非法请求头', () async {
-    final hints = await userAgentClientHintsHeader();
-    expect(hints['Sec-CH-UA'], '"青橘"; v="0.2.28"');
-    final client = HttpClient();
-    addTearDown(() => client.close(force: true));
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => server.close(force: true));
-    final request = await client.getUrl(
-      Uri.parse('http://127.0.0.1:${server.port}/unread.json'),
-    );
-    expect(
-      () => request.headers.set('Sec-CH-UA', hints['Sec-CH-UA']!),
-      throwsA(isA<FormatException>()),
-    );
-    request.abort();
-  });
-
-  for (final platform in ['Android', 'iOS']) {
-    test('$platform 保留中文显示名但使用 ASCII 网络品牌', () async {
-      metadata['platform'] = platform;
-      final hints = await loadForumClientHints();
-      expect(metadata['appName'], '青橘');
-      expect(hints['Sec-CH-UA'], '"Qingju"; v="0.2.28"');
-      expect(hints, isNot(contains('User-Agent')));
-      expect(hints['Sec-CH-UA-Platform'], platform);
-      expect(hints['Sec-CH-UA-Mobile'], '?1');
+  group('ClientHints.brandList', () {
+    test('与正式版 Chrome 156 实测一致', () {
       expect(
-        hints.values.every(
-          (v) => v.codeUnits.every((u) => u >= 32 && u <= 126),
-        ),
-        isTrue,
+        ClientHints.brandList(156, 'Google Chrome'),
+        '"Not:A-Brand";v="8", "Chromium";v="156", "Google Chrome";v="156"',
       );
     });
-  }
 
-  test('丢弃本地化设备型号和控制字符，不影响其他 Hint', () async {
-    metadata['model'] = '小米手机';
-    metadata['architecture'] = 'arm64\r\nx-injected: yes';
-    final hints = await loadForumClientHints();
-    expect(hints, isNot(contains('Sec-CH-UA-Model')));
-    expect(hints, isNot(contains('Sec-CH-UA-Arch')));
-    expect(hints['Sec-CH-UA-Platform'], 'Android');
-  });
-
-  test('无效版本不会形成带引号注入或中文的品牌头', () async {
-    metadata['appVersion'] = '版本"\r\n';
-    final hints = await loadForumClientHints();
-    expect(hints, isNot(contains('Sec-CH-UA')));
-    expect(hints, isNot(contains('Sec-CH-UA-Full-Version')));
-    expect(hints['Sec-CH-UA-Mobile'], '?1');
-  });
-
-  test('修复后的 Hint 经 Dio IO 实际到达本地 HTTP 服务', () async {
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => server.close(force: true));
-    final received = server.first.then((request) async {
-      final brand = request.headers.value('sec-ch-ua');
-      request.response.headers.contentType = ContentType.json;
-      request.response.write('{"ok":true}');
-      await request.response.close();
-      return brand;
-    });
-    final dio = Dio()
-      ..httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () => HttpClient()..findProxy = (_) => 'DIRECT',
+    test('与安卓 WebView 133 实测一致（品牌排在 Chromium 之前）', () {
+      expect(
+        ClientHints.brandList(133, 'Android WebView'),
+        '"Not(A:Brand";v="99", "Android WebView";v="133", "Chromium";v="133"',
       );
-    addTearDown(() => dio.close(force: true));
-    final response = await dio.get<Map<String, dynamic>>(
-      'http://127.0.0.1:${server.port}/unread.json',
-      options: Options(headers: await loadForumClientHints()),
-    );
-    expect(response.statusCode, 200);
-    expect(response.data, {'ok': true});
-    expect(await received, '"Qingju"; v="0.2.28"');
+    });
+  });
+
+  group('ClientHints.fromUserAgent', () {
+    test('安卓清理后的 UA 推导出 Chrome 低熵三件套', () {
+      const ua =
+          'Mozilla/5.0 (Linux; Android 16; Pixel 7 Build/BP2A.250605.031) '
+          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 '
+          'Mobile Safari/537.36';
+      expect(ClientHints.fromUserAgent(ua), {
+        'sec-ch-ua':
+            '"Not:A-Brand";v="8", "Chromium";v="156", "Google Chrome";v="156"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+      });
+    });
+
+    test('桌面 Chrome UA 为非移动端', () {
+      const ua =
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36';
+      final hints = ClientHints.fromUserAgent(ua)!;
+      expect(hints['sec-ch-ua-mobile'], '?0');
+      expect(hints['sec-ch-ua-platform'], '"macOS"');
+    });
+
+    test('Edge UA 使用 Microsoft Edge 品牌', () {
+      const ua =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0';
+      expect(
+        ClientHints.fromUserAgent(ua)!['sec-ch-ua'],
+        '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
+      );
+    });
+
+    test('Safari / WebKit UA 不发送 Client Hints', () {
+      const ua =
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) '
+          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 '
+          'Mobile/15E148 Safari/604.1';
+      expect(ClientHints.fromUserAgent(ua), isNull);
+    });
+
+    test('只发送低熵头，不主动发送高熵头', () {
+      const ua =
+          'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36';
+      expect(ClientHints.fromUserAgent(ua)!.keys, [
+        'sec-ch-ua',
+        'sec-ch-ua-mobile',
+        'sec-ch-ua-platform',
+      ]);
+    });
   });
 }

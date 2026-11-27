@@ -25,6 +25,7 @@ import 'my_browser_page.dart';
 import 'my_topics_page.dart';
 import 'my_badges_page.dart';
 import 'user_profile_page.dart';
+import 'webview_page.dart';
 
 import 'package:m3e_ui/m3e_ui.dart';
 
