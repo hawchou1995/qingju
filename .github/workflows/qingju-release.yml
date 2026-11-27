@@ -10,7 +10,7 @@ on:
       version:
         description: 发布标签（qingju-v 前缀）
         required: true
-        default: qingju-v0.2.33
+        default: qingju-v0.2.34
       prerelease:
         description: 是否发布为预发布（true/false）
         required: true
@@ -49,7 +49,7 @@ jobs:
           submodules: recursive
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.8'
+          flutter-version: '3.50.0'
           cache: true
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -61,7 +61,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Restore stable Android debug keystore
         if: matrix.platform == 'android'
         env:
@@ -169,7 +169,7 @@ jobs:
       - name: Build Linux in Arch with WPE
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/project" -w /project \
-            -e FLUTTER_VERSION=3.44.8 -e FLUXDO_LINUX_BUILD_FLAGS="$FLUXDO_LINUX_BUILD_FLAGS" \
+            -e FLUTTER_VERSION=3.50.0 -e FLUXDO_LINUX_BUILD_FLAGS="$FLUXDO_LINUX_BUILD_FLAGS" \
             archlinux:base-20260906.0.587075 bash scripts/ci/linux/qingju_container.sh
           sudo chown -R "$(id -u):$(id -g)" .artifacts build
           mkdir -p dist
