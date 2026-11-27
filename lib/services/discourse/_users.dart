@@ -13,7 +13,7 @@ mixin _UsersMixin on _DiscourseServiceBase {
         'isSilent': true,
         // 通道标注只需进网络日志(_networkLogFields 是日志拦截器的读取口);
         // 顶层同名键无人消费,不再重复写。
-        '_networkLogFields': {'requestLane': 'seeking'},
+        '_networkLogFields': {'requestLane': 'background-user'},
       },
     );
   }
@@ -75,10 +75,17 @@ mixin _UsersMixin on _DiscourseServiceBase {
   ///
   /// [includePostCountFor] 传话题 id 时响应注入该用户在此话题内的发帖数
   /// (topic_post_count),卡片据此决定是否显示「只看 TA」过滤按钮。
-  Future<User> getUserCard(String username, {int? includePostCountFor}) async {
+  ///
+  /// [isSilent] 后台查询(如系统通知取头像)失败时不弹错误提示。
+  Future<User> getUserCard(
+    String username, {
+    int? includePostCountFor,
+    bool isSilent = false,
+  }) async {
     final response = await _dio.get(
       '/u/$username/card.json',
       queryParameters: {'include_post_count_for': ?includePostCountFor},
+      options: isSilent ? Options(extra: const {'isSilent': true}) : null,
     );
     final data = response.data as Map<String, dynamic>;
     return User.fromJson(data['user'] ?? data);
@@ -196,6 +203,22 @@ mixin _UsersMixin on _DiscourseServiceBase {
     return UserReactionsResponse.fromJson(response.data);
   }
 
+  /// 获取用户收到的回应列表（discourse-reactions 插件，游标分页每页 20）
+  Future<UserReactionsResponse> getUserReactionsReceived(
+    String username, {
+    int? beforeReactionUserId,
+  }) async {
+    final queryParams = <String, dynamic>{'username': username};
+    if (beforeReactionUserId != null) {
+      queryParams['before_reaction_user_id'] = beforeReactionUserId;
+    }
+    final response = await _dio.get(
+      '/discourse-reactions/posts/reactions-received.json',
+      queryParameters: queryParams,
+    );
+    return UserReactionsResponse.fromJson(response.data);
+  }
+
   /// 获取用户发出的 Boost 列表（discourse-boosts 插件，游标分页每页 20）
   Future<UserBoostsResponse> getUserBoostsGiven(
     String username, {
@@ -208,6 +231,20 @@ mixin _UsersMixin on _DiscourseServiceBase {
           ? {'before_boost_id': beforeBoostId}
           : null,
       options: _userRequestOptions(isSilent),
+    );
+    return UserBoostsResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// 获取用户收到的 Boost 列表（discourse-boosts 插件，游标分页每页 20）
+  Future<UserBoostsResponse> getUserBoostsReceived(
+    String username, {
+    int? beforeBoostId,
+  }) async {
+    final response = await _dio.get(
+      '/discourse-boosts/users/$username/boosts-received.json',
+      queryParameters: beforeBoostId != null
+          ? {'before_boost_id': beforeBoostId}
+          : null,
     );
     return UserBoostsResponse.fromJson(response.data as Map<String, dynamic>);
   }
@@ -234,6 +271,23 @@ mixin _UsersMixin on _DiscourseServiceBase {
       queryParameters: {'username': username, 'offset': offset},
     );
     return SolvedPostsResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// 服务端聚合的关注用户帖子流。
+  Future<FollowingFeedResponse> getFollowingFeed(
+    String username, {
+    String? before,
+  }) async {
+    final response = await _dio.get(
+      '/follow/posts/${Uri.encodeComponent(username)}.json',
+      queryParameters: {
+        'limit': 20,
+        'created_before': ?before,
+      },
+    );
+    return FollowingFeedResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
   }
 
   /// 获取用户关注列表
@@ -393,6 +447,14 @@ mixin _UsersMixin on _DiscourseServiceBase {
       queryParameters: {'grouped': 'true'},
     );
     return BadgeDetailResponse.fromJson(response.data);
+  }
+
+  /// 切换个人资料页展示的徽章。成功后重新读取服务端的展示顺序与上限。
+  Future<void> toggleFavoriteUserBadge(int userBadgeId) async {
+    await _dio.put(
+      '/user_badges/$userBadgeId/toggle_favorite',
+      options: Options(extra: {FluxRequestKeys.noRecovery: true}),
+    );
   }
 
   /// 获取徽章信息

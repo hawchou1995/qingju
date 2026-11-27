@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+
 import '../../l10n/s.dart';
 import '../../models/category.dart';
 import '../../models/search_result.dart';
@@ -11,6 +13,7 @@ import '../../providers/preferences_provider.dart';
 import '../../utils/color_utils.dart';
 import '../../utils/share_utils.dart';
 import '../../utils/number_utils.dart';
+import '../common/emoji_text.dart';
 import '../common/morphing_preview_route.dart';
 import '../common/relative_time_text.dart';
 import '../common/smart_avatar.dart';
@@ -116,7 +119,9 @@ class SearchPreviewDialog extends ConsumerWidget {
               ? Material(type: MaterialType.transparency, child: sheetBody)
               : Material(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: context.shapes.borderRadius(20),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   elevation: 8,
                   child: sheetBody,
@@ -173,7 +178,7 @@ class SearchPreviewDialog extends ConsumerWidget {
                 ),
               ),
             ),
-          TextSpan(text: topic.title),
+          ...EmojiText.buildEmojiSpans(context, topic.title, titleStyle),
         ],
       ),
       maxLines: 3,
@@ -226,7 +231,7 @@ class SearchPreviewDialog extends ConsumerWidget {
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(
+                        InteractionPageRoute(
                           builder: (_) =>
                               CategoryTopicsPage(category: category),
                         ),
@@ -268,9 +273,11 @@ class SearchPreviewDialog extends ConsumerWidget {
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(10),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: context.shapes.borderRadius(10),
+              ),
             ),
             child: Text(
               '#${post.postNumber}',
@@ -306,7 +313,7 @@ class SearchPreviewDialog extends ConsumerWidget {
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
-                MaterialPageRoute(
+                InteractionPageRoute(
                   builder: (_) => TagTopicsPage(tagName: tag.name),
                 ),
               );
@@ -341,8 +348,9 @@ class SearchPreviewDialog extends ConsumerWidget {
 
     final contentFontScale = ref.watch(preferencesProvider).contentFontScale;
     // 纯文本无色块:预览是轻量一瞥,摘要不需要卡片式衬底
-    return Text(
+    return EmojiText(
       cleanBlurb,
+      inline: true,
       style: theme.textTheme.bodyMedium?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
         height: 1.6,
@@ -441,21 +449,15 @@ class SearchPreviewDialog extends ConsumerWidget {
     return Container(
       width: 8,
       height: 8,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: ColorUtils.readableOn(
-          _parseColor(category.color),
+          ColorUtils.category(category.color, Theme.of(context)),
           theme.brightness,
         ),
-        borderRadius: BorderRadius.circular(2),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(2),
+        ),
       ),
     );
-  }
-
-  Color _parseColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      return Color(int.parse('0xFF$hex'));
-    }
-    return Colors.grey;
   }
 }

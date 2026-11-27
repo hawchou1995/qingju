@@ -10,9 +10,8 @@ import 'package:m3e_ui/m3e_ui.dart';
 import 'package:common_ui/common_ui.dart';
 import 'package:fluxdo/widgets/markdown_editor/composer_submit_button.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/l10n/s.dart';
@@ -28,7 +27,6 @@ import 'package:fluxdo/services/local_notification_service.dart'
     show navigatorKey;
 import 'package:fluxdo/utils/platform_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:scroll_to_index/scroll_to_index.dart';
 
 class _ImagePicker extends ImagePickerPlatform {
   _ImagePicker(this.paths);
@@ -233,6 +231,7 @@ Future<ScrollController> _pumpPage(
   TargetPlatform platform = TargetPlatform.android,
   ThemeData? theme,
   TextScaler textScaler = TextScaler.noScaling,
+  int? initialMessageId,
 }) async {
   final prefs = await SharedPreferences.getInstance();
   await tester.pumpWidget(
@@ -241,7 +240,11 @@ Future<ScrollController> _pumpPage(
         sharedPreferencesProvider.overrideWithValue(prefs),
         currentUserProvider.overrideWith(_CurrentUser.new),
         chatChannelsProvider.overrideWith(_Channels.new),
-        chatMessagesProvider(_streamKey).overrideWith(() => messages),
+        chatMessagesProvider((
+          channelId: 1,
+          threadId: 1,
+          targetMessageId: initialMessageId,
+        )).overrideWith(() => messages),
       ],
       child: TranslationProvider(
         child: MaterialApp(
@@ -252,13 +255,13 @@ Future<ScrollController> _pumpPage(
             child: child!,
           ),
           locale: const Locale('zh'),
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: AppLocaleUtils.supportedLocales,
-          home: const ChatChannelPage(channelId: 1, threadId: 1),
+          home: ChatChannelPage(
+            channelId: 1,
+            threadId: 1,
+            initialMessageId: initialMessageId,
+          ),
         ),
       ),
     ),
@@ -288,10 +291,18 @@ Future<void> _nearHistory(
 Finder _visibleMessage(WidgetTester tester) {
   final viewport = tester.getRect(find.byType(CustomScrollView));
   final bottom = tester.getTopLeft(find.byType(TextField)).dy;
-  final visible = find.byType(AutoScrollTag).evaluate().firstWhere((element) {
-    final rect = tester.getRect(find.byKey(element.widget.key!));
-    return rect.top >= viewport.top && rect.bottom <= bottom;
-  });
+  final visible = find
+      .byWidgetPredicate(
+        (widget) =>
+            widget is KeyedSubtree &&
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith('chat_msg_'),
+      )
+      .evaluate()
+      .firstWhere((element) {
+        final rect = tester.getRect(find.byKey(element.widget.key!));
+        return rect.top >= viewport.top && rect.bottom <= bottom;
+      });
   return find.byKey(visible.widget.key!);
 }
 
@@ -302,6 +313,46 @@ void main() {
   });
 
   tearDown(() => PlatformUtils.debugDesktopOverride = null);
+
+  testWidgets('通知从历史消息进入时准确定位且不触发分页', (tester) async {
+    final messages = _Messages(count: 200, variedHeights: true);
+    await _pumpPage(tester, messages, initialMessageId: 120);
+    final target = find.byKey(const ValueKey('chat_msg_120'));
+    expect(target, findsOneWidget);
+    final viewport = tester.getRect(find.byType(CustomScrollView));
+    expect(tester.getTopLeft(target).dy, closeTo(viewport.top, 1));
+    expect(messages.pastCalls, 0);
+    expect(messages.futureCalls, 0);
+    await _disposePage(tester);
+  });
+
+  testWidgets('引用定位与新消息同帧到达时仍落到原目标', (tester) async {
+    final messages = _Messages(
+      count: 200,
+      variedHeights: true,
+      canLoadMoreFuture: false,
+    );
+    await _pumpPage(tester, messages);
+    messages.addReplyReference(300, 120);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('chat_msg_120')), findsNothing);
+    await tester.tap(find.text('定位到消息 120'));
+    await tester.pump();
+    messages.receiveMessage();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    final target = find.byKey(const ValueKey('chat_msg_120'));
+    expect(target, findsOneWidget);
+    expect(
+      tester
+          .getRect(find.byType(CustomScrollView))
+          .contains(tester.getCenter(target)),
+      isTrue,
+    );
+    expect(messages.pastCalls, 0);
+    expect(messages.futureCalls, 0);
+    await _disposePage(tester);
+  });
 
   for (final count in [1, 2]) {
     testWidgets('聊天选图进入共用确认框，取消不创建附件 count=$count', (tester) async {
@@ -337,6 +388,27 @@ void main() {
       await _disposePage(tester);
     });
   }
+
+  testWidgets('输入框失焦与重新聚焦时输入条不上下跳', (tester) async {
+    await _pumpPage(tester, _Messages());
+    final surface = find.byKey(const ValueKey('chat-composer-surface'));
+    final field = find.byType(TextField);
+    final focusNode = tester.widget<TextField>(field).focusNode!;
+    // 进页 autofocus:聚焦但键盘未弹
+    expect(focusNode.hasFocus, isTrue);
+    final focusedBottom = tester.getRect(surface).bottom;
+
+    // 打开菜单/大图时焦点被新路由抢走
+    focusNode.unfocus();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(surface).bottom, focusedBottom);
+
+    // 菜单关闭后焦点回来
+    focusNode.requestFocus();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(surface).bottom, focusedBottom);
+    await _disposePage(tester);
+  });
 
   testWidgets('聊天工具条玻璃与发送忙碌状态不重复提交', (tester) async {
     final messages = _Messages()..sendRequest = Completer<void>();
@@ -426,6 +498,22 @@ void main() {
         expect(
           tester.getCenter(send).dy,
           closeTo(tester.getCenter(field).dy, 0.5),
+        );
+        // 底色由装饰内部容器绘制，需与输入框外框一致，否则底色偏上
+        final fill = find.descendant(
+          of: field,
+          matching: find.byWidgetPredicate(
+            (widget) => widget.runtimeType.toString() == '_BorderContainer',
+          ),
+        );
+        expect(
+          tester.getRect(fill).top,
+          closeTo(tester.getRect(field).top, 0.5),
+        );
+        expect(
+          tester.getRect(fill).bottom,
+          closeTo(tester.getRect(field).bottom, 0.5),
+          reason: '单行时输入框底色撑满操作区高度，与按钮同一中线',
         );
         final distanceFromBottom =
             tester.getBottomLeft(field).dy - tester.getCenter(send).dy;
@@ -619,14 +707,15 @@ void main() {
       await tester.pump();
       final message = _visibleMessage(tester);
       final before = tester.getTopLeft(message);
-      final offset = controller.offset;
       messages.finishFuture(count: 50);
       await tester.pump();
       await tester.pump();
 
       expect(message, findsOneWidget);
       expect(tester.getTopLeft(message), before);
-      expect(controller.offset, offset);
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump();
+      expect(tester.getTopLeft(message).dy, closeTo(before.dy - 40, 1));
       expect(messages.futureCalls, page);
       await gesture.up();
       await tester.pumpAndSettle();
@@ -672,7 +761,7 @@ void main() {
 
     messages.finishFuture(count: 50, hasMore: false);
     await tester.pumpAndSettle();
-    expect(controller.position.minScrollExtent, lessThan(0));
+    expect(controller.position.maxScrollExtent, greaterThan(600));
     expect(controller.position.extentBefore, greaterThan(600));
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
@@ -686,8 +775,9 @@ void main() {
   testWidgets('实时消息仅在贴底时跟随，阅读历史时保持原位', (tester) async {
     final messages = _Messages(variedHeights: true, canLoadMoreFuture: false);
     final controller = await _pumpPage(tester, messages);
-    controller.jumpTo(800);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 800));
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 600));
     final message = _visibleMessage(tester);
     final before = tester.getTopLeft(message);
     messages.receiveMessage();
@@ -712,7 +802,7 @@ void main() {
     await tester.pump();
     messages.finishFuture(count: 2);
     await tester.pumpAndSettle();
-    controller.jumpTo(-100);
+    controller.jumpTo(100);
     await tester.pumpAndSettle();
 
     final older = tester.getRect(find.byKey(const ValueKey('chat_msg_140')));
@@ -773,8 +863,11 @@ void main() {
     final controller = await _pumpPage(tester, messages);
     controller.jumpTo(1800);
     await tester.pumpAndSettle();
-    final visible = tester.widget<AutoScrollTag>(_visibleMessage(tester));
-    messages.addReplyReference(visible.index, 50);
+    final visible = tester.widget<KeyedSubtree>(_visibleMessage(tester));
+    final visibleId = int.parse(
+      (visible.key! as ValueKey<String>).value.substring('chat_msg_'.length),
+    );
+    messages.addReplyReference(visibleId, 50);
     await tester.pumpAndSettle();
     await tester.tap(find.text('定位到消息 50'));
     await tester.pump();

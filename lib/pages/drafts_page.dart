@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/draft.dart';
 import '../navigation/nav_action_bus.dart';
 import '../providers/discourse_providers.dart';
@@ -23,6 +25,8 @@ import '../providers/draft_store_provider.dart';
 import '../providers/selected_topic_provider.dart';
 import 'create_topic_page.dart';
 import 'topic_detail_page/topic_detail_page.dart';
+import '../theme/app_colors.dart';
+import '../widgets/common/emoji_text.dart';
 
 /// 草稿列表 Provider
 final draftsProvider = FutureProvider.autoDispose<List<Draft>>((ref) async {
@@ -190,15 +194,15 @@ class _DraftsPageState extends ConsumerState<DraftsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Symbols.drafts_rounded,
                       size: 64,
-                      color: Colors.grey,
+                      color: context.appColors.grey,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       context.l10n.drafts_empty,
-                      style: const TextStyle(color: Colors.grey),
+                      style: TextStyle(color: context.appColors.grey),
                     ),
                   ],
                 ),
@@ -255,7 +259,7 @@ class _DraftsPageState extends ConsumerState<DraftsPage> {
       // 新话题草稿：进入创建话题页面
       await Navigator.push(
         context,
-        MaterialPageRoute(
+        InteractionPageRoute(
           builder: (_) => CreateTopicPage(draftKey: draft.draftKey),
         ),
       );
@@ -308,7 +312,7 @@ class _DraftsPageState extends ConsumerState<DraftsPage> {
       // 窄屏:全屏打开,回来再刷新
       await Navigator.push(
         context,
-        MaterialPageRoute(
+        InteractionPageRoute(
           builder: (_) => TopicDetailPage(
             topicId: topicId!,
             scrollToPostNumber: replyToPostNumber,
@@ -461,9 +465,11 @@ class _DraftCard extends StatelessWidget {
                       horizontal: 8,
                       vertical: 4,
                     ),
-                    decoration: BoxDecoration(
+                    decoration: ShapeDecoration(
                       color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
+                      shape: RoundedSuperellipseBorder(
+                        borderRadius: context.shapes.borderRadius(6),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -509,7 +515,7 @@ class _DraftCard extends StatelessWidget {
               const SizedBox(height: 12),
 
               // 标题
-              Text(
+              EmojiText(
                 title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w500,

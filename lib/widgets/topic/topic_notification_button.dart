@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../models/category.dart';
 import '../../models/topic.dart';
@@ -54,21 +55,25 @@ class TopicNotificationButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onChanged != null ? () => _showSheet(context) : null,
-        borderRadius: BorderRadius.circular(8), // 统一圆角为 8
+        customBorder: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(8),
+        ), // 统一圆角为 8
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 8,
           ), // 统一 Padding
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isWatching
-                  ? theme.colorScheme.primary
-                  : Colors.transparent,
-              width: 1,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: context.shapes.borderRadius(8),
+              side: BorderSide(
+                color: isWatching
+                    ? theme.colorScheme.primary
+                    : Colors.transparent,
+                width: 1,
+              ),
             ),
           ),
           child: Row(

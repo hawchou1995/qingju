@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:common_ui/common_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -139,7 +140,7 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
             return ListTile(
               leading: Icon(
                 Symbols.tab_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                color: context.emphasis.accent,
               ),
               title: Text(l.reading_bookmarksOpenMode),
               subtitle: Text(switch (currentMode) {
@@ -151,6 +152,26 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
               trailing: const Icon(Symbols.chevron_right_rounded),
               onTap: () =>
                   _showBookmarksOpenModePicker(context, ref, currentMode),
+            );
+          },
+        ),
+        CustomModel(
+          id: 'replyComposerMode',
+          title: l10n.reading_replyComposerMode,
+          builder: (context, ref) {
+            final current = ref.watch(
+              preferencesProvider.select((p) => p.replyComposerMode),
+            );
+            final l = context.l10n;
+            return ListTile(
+              leading: Icon(
+                Symbols.edit_note_rounded,
+                color: context.emphasis.accent,
+              ),
+              title: Text(l.reading_replyComposerMode),
+              subtitle: Text(_replyComposerModeLabel(l, current)),
+              trailing: const Icon(Symbols.chevron_right_rounded),
+              onTap: () => _showReplyComposerModePicker(context, ref, current),
             );
           },
         ),
@@ -173,6 +194,15 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
       icon: Symbols.gesture_rounded,
       items: [
         SwitchModel(
+          id: 'topicBarAutoHide',
+          title: l10n.reading_topicBarAutoHide,
+          subtitle: l10n.reading_topicBarAutoHideDesc,
+          icon: Symbols.unfold_less_rounded,
+          getValue: (ref) => ref.watch(preferencesProvider).topicBarAutoHide,
+          onChanged: (ref, v) =>
+              ref.read(preferencesProvider.notifier).setTopicBarAutoHide(v),
+        ),
+        SwitchModel(
           id: 'progressGesturesEnabled',
           title: l10n.progressGesture_enable,
           subtitle: l10n.progressGesture_enableDesc,
@@ -184,72 +214,23 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
               .setProgressGesturesEnabled(v),
         ),
         CustomModel(
-          id: 'progressGestureSwipeLeft',
-          title: l10n.progressGesture_swipeLeft,
+          id: 'progressGestureDragToLocate',
+          title: l10n.progressGesture_dragToLocate,
+          subtitle: l10n.progressGesture_dragToLocateDesc,
           builder: (context, ref) {
             final enabled = ref.watch(
               preferencesProvider.select((p) => p.progressGesturesEnabled),
             );
-            final current = ref.watch(
-              preferencesProvider.select((p) => p.progressGestureSwipeLeft),
-            );
-            final meta = progressGestureActionMeta(context, current);
             return ListTile(
               enabled: enabled,
               leading: Icon(
-                Symbols.swipe_left_rounded,
+                Symbols.swap_horiz_rounded,
                 color: enabled
                     ? Theme.of(context).colorScheme.primary
                     : Theme.of(context).disabledColor,
               ),
-              title: Text(context.l10n.progressGesture_swipeLeft),
-              subtitle: Text(meta.label),
-              trailing: const Icon(Symbols.chevron_right_rounded),
-              onTap: enabled
-                  ? () => _showGestureActionPicker(
-                      context,
-                      ref,
-                      current,
-                      (a) => ref
-                          .read(preferencesProvider.notifier)
-                          .setProgressGestureSwipeLeft(a),
-                    )
-                  : null,
-            );
-          },
-        ),
-        CustomModel(
-          id: 'progressGestureSwipeRight',
-          title: l10n.progressGesture_swipeRight,
-          builder: (context, ref) {
-            final enabled = ref.watch(
-              preferencesProvider.select((p) => p.progressGesturesEnabled),
-            );
-            final current = ref.watch(
-              preferencesProvider.select((p) => p.progressGestureSwipeRight),
-            );
-            final meta = progressGestureActionMeta(context, current);
-            return ListTile(
-              enabled: enabled,
-              leading: Icon(
-                Symbols.swipe_right_rounded,
-                color: enabled
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).disabledColor,
-              ),
-              title: Text(context.l10n.progressGesture_swipeRight),
-              subtitle: Text(meta.label),
-              trailing: const Icon(Symbols.chevron_right_rounded),
-              onTap: enabled
-                  ? () => _showGestureActionPicker(
-                      context,
-                      ref,
-                      current,
-                      (a) => ref
-                          .read(preferencesProvider.notifier)
-                          .setProgressGestureSwipeRight(a),
-                    )
-                  : null,
+              title: Text(context.l10n.progressGesture_dragToLocate),
+              subtitle: Text(context.l10n.progressGesture_dragToLocateDesc),
             );
           },
         ),
@@ -317,7 +298,7 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
               trailing: const Icon(Symbols.chevron_right_rounded),
               onTap: enabled
                   ? () => Navigator.of(context).push(
-                      MaterialPageRoute(
+                      InteractionPageRoute(
                         builder: (_) => const ProgressGestureMenuSettingsPage(),
                       ),
                     )
@@ -349,7 +330,7 @@ List<SettingsGroup> buildReadingGroups(BuildContext context) {
             return ListTile(
               leading: Icon(
                 Symbols.linear_scale_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                color: context.emphasis.accent,
               ),
               title: Text(l.nested_lineStyle),
               subtitle: Text(switch (currentStyle) {
@@ -379,7 +360,7 @@ void _showLineStylePicker(
     (NestedLineStyle.straight, l10n.nested_lineStyleStraight),
   ];
 
-  showDialog<NestedLineStyle>(
+  showInteractionDialog<NestedLineStyle>(
     context: context,
     builder: (context) => SimpleDialog(
       title: Text(l10n.nested_lineStyle),
@@ -426,7 +407,7 @@ void _showBookmarksOpenModePicker(
     ),
   ];
 
-  showDialog<BookmarksOpenMode>(
+  showInteractionDialog<BookmarksOpenMode>(
     context: context,
     builder: (context) => SimpleDialog(
       title: Text(l10n.reading_bookmarksOpenMode),
@@ -459,6 +440,53 @@ void _showBookmarksOpenModePicker(
   });
 }
 
+String _replyComposerModeLabel(AppLocalizations l, ReplyComposerMode mode) {
+  return switch (mode) {
+    ReplyComposerMode.auto => l.reading_replyComposerModeAuto,
+    ReplyComposerMode.quick => l.reading_replyComposerModeQuick,
+    ReplyComposerMode.full => l.reading_replyComposerModeFull,
+  };
+}
+
+void _showReplyComposerModePicker(
+  BuildContext context,
+  WidgetRef ref,
+  ReplyComposerMode current,
+) {
+  final l10n = context.l10n;
+  showInteractionDialog<ReplyComposerMode>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: Text(l10n.reading_replyComposerMode),
+      children: [
+        for (final mode in ReplyComposerMode.values)
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, mode),
+            child: Row(
+              children: [
+                Icon(
+                  mode == current
+                      ? Symbols.radio_button_checked_rounded
+                      : Symbols.radio_button_unchecked_rounded,
+                  color: mode == current
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(_replyComposerModeLabel(l10n, mode))),
+              ],
+            ),
+          ),
+      ],
+    ),
+  ).then((selected) {
+    if (selected != null) {
+      ref.read(preferencesProvider.notifier).setReplyComposerMode(selected);
+    }
+  });
+}
+
 void _showGestureActionPicker(
   BuildContext context,
   WidgetRef ref,
@@ -466,7 +494,7 @@ void _showGestureActionPicker(
   void Function(ProgressGestureAction) onPicked,
 ) {
   final l10n = context.l10n;
-  showDialog<ProgressGestureAction>(
+  showInteractionDialog<ProgressGestureAction>(
     context: context,
     builder: (dialogContext) {
       final screen = MediaQuery.of(dialogContext).size;
@@ -474,10 +502,7 @@ void _showGestureActionPicker(
       final dialogWidth = math.min(screen.width - 48, 560.0);
       final dialogMaxHeight = math.min(screen.height * 0.85, 640.0);
       return Dialog(
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 24,
-        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         clipBehavior: Clip.antiAlias,
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -500,13 +525,12 @@ void _showGestureActionPicker(
                 child: GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   shrinkWrap: true,
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 240,
-                        mainAxisExtent: 52,
-                        crossAxisSpacing: 4,
-                        mainAxisSpacing: 4,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 240,
+                    mainAxisExtent: 52,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                  ),
                   itemCount: ProgressGestureAction.values.length,
                   itemBuilder: (context, index) {
                     final action = ProgressGestureAction.values[index];
@@ -515,7 +539,9 @@ void _showGestureActionPicker(
                     final theme = Theme.of(context);
                     return InkWell(
                       onTap: () => Navigator.pop(dialogContext, action),
-                      borderRadius: BorderRadius.circular(8),
+                      customBorder: RoundedSuperellipseBorder(
+                        borderRadius: context.shapes.borderRadius(8),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,

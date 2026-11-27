@@ -1,11 +1,14 @@
-import 'dart:ui' as ui;
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:common_ui/common_ui.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/providers/preferences_provider.dart';
 import 'package:fluxdo/providers/theme_provider.dart';
+import 'package:fluxdo/theme/theme_registry.dart';
+import 'package:fluxdo/theme/theme_spec.dart';
 import 'package:fluxdo/widgets/common/app_glass_settings.dart';
 import 'package:fluxdo/widgets/layout/adaptive_navigation.dart';
 import 'package:fluxdo/widgets/markdown_editor/composer_island.dart';
@@ -62,10 +65,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(GlassSurface), findsNWidgets(2));
     expect(
-      find.byType(BackdropFilter),
+      find.byType(GlassBackdrop),
       findsNWidgets(2),
       reason: '基础档两处各一层模糊，旧底栏关闭值不再生效',
     );
+    expect(_optical(), findsNothing);
     final before = tester
         .renderObjectList(find.byType(GlassSurface))
         .map((box) => (box as RenderBox).size)
@@ -73,7 +77,7 @@ void main() {
     final notifier = container.read(preferencesProvider.notifier);
     await notifier.setGlassEnabled(false);
     await tester.pumpAndSettle();
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(GlassBackdrop), findsNothing);
     expect(
       tester
           .renderObjectList(find.byType(GlassSurface))
@@ -88,15 +92,15 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 10));
       });
       await tester.pump();
-      if (!ui.ImageFilter.isShaderFilterSupported ||
-          find.byType(BackdropFilter).evaluate().length == 4) {
+      if (_optical().evaluate().length == 2) {
         break;
       }
     }
     await tester.pumpAndSettle();
     expect(
-      find.byType(BackdropFilter),
-      findsNWidgets(ui.ImageFilter.isShaderFilterSupported ? 4 : 2),
+      _optical(),
+      findsNWidgets(2),
+      reason: '完整档两处都走光学材质，各平台一致',
     );
     expect(
       container.read(preferencesProvider).dialogBlur,
@@ -105,4 +109,58 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('主题只决定自动档的质感与外壳阴影，用户明确的档位优先', (tester) async {
+    ThemeRegistry.setFixed([
+      ThemeSpec.fromJson(
+        jsonDecode(File('assets/themes/paper.json').readAsStringSync())
+            as Map<String, dynamic>,
+      ),
+    ]);
+    addTearDown(() => ThemeRegistry.setFixed(const []));
+    SharedPreferences.setMockInitialValues({'theme_id': 'paper'});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    final probe = GlobalKey();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          builder: (_, child) => AppGlassSettings(child: child!),
+          home: SizedBox(key: probe),
+        ),
+      ),
+    );
+    GlassSettings settings() => GlassSettingsScope.of(probe.currentContext!);
+    bool optics() =>
+        settings().allowsOptics(shaderSupported: true, highContrast: false);
+
+    // 纸质主题：自动档只用基础磨砂，外壳不投影
+    expect(settings().shadows, isFalse);
+    expect(optics(), isFalse);
+    // 用户明确选完整玻璃时以用户为准
+    await container
+        .read(preferencesProvider.notifier)
+        .setGlassEffectLevel(GlassEffectLevel.full);
+    await tester.pump();
+    expect(optics(), isTrue);
+    // 换回 Material 主题，自动档恢复折射与阴影
+    await container
+        .read(preferencesProvider.notifier)
+        .setGlassEffectLevel(GlassEffectLevel.auto);
+    await container
+        .read(themeProvider.notifier)
+        .setThemeId(ThemeRegistry.materialId);
+    await tester.pump();
+    expect(settings().shadows, isTrue);
+    expect(optics(), isTrue);
+  });
 }
+
+/// 走光学材质（带折射 shader）的玻璃背景
+Finder _optical() => find.byWidgetPredicate(
+  (widget) => widget is GlassBackdrop && widget.program != null,
+);

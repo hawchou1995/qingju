@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:m3e_ui/m3e_ui.dart';
 
 import '../providers/shortcut_provider.dart';
@@ -17,6 +17,11 @@ import '../utils/platform_utils.dart';
 class DesktopRefreshIndicator extends StatefulWidget {
   final Widget child;
   final Future<void> Function() onRefresh;
+  final Future<void> Function()? onSecondaryAction;
+  final bool externalReveal;
+  final double Function()? revealOffset;
+  final Widget Function(BuildContext, double, bool, bool)?
+  secondaryActionBuilder;
   final ValueListenable<int>? refreshNotifier;
   final GlobalKey<M3eRefreshIndicatorState>? refreshIndicatorKey;
 
@@ -35,6 +40,10 @@ class DesktopRefreshIndicator extends StatefulWidget {
     super.key,
     required this.child,
     required this.onRefresh,
+    this.onSecondaryAction,
+    this.externalReveal = false,
+    this.revealOffset,
+    this.secondaryActionBuilder,
     this.refreshNotifier,
     this.refreshIndicatorKey,
     this.shouldRefresh,
@@ -78,6 +87,10 @@ class _DesktopRefreshIndicatorState extends State<DesktopRefreshIndicator> {
     return M3eRefreshIndicator(
       key: _key,
       onRefresh: widget.onRefresh,
+      onSecondaryAction: widget.onSecondaryAction,
+      externalReveal: widget.externalReveal,
+      revealOffset: widget.revealOffset,
+      secondaryActionBuilder: widget.secondaryActionBuilder,
       edgeOffset: widget.edgeOffset,
       notificationPredicate:
           widget.notificationPredicate ?? defaultScrollNotificationPredicate,

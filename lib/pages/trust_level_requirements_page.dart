@@ -1,4 +1,8 @@
-import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+
+import 'package:common_ui/common_ui.dart';
+import 'package:dio/dio.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:html/dom.dart' as html_dom;
@@ -10,6 +14,9 @@ import '../providers/core_providers.dart';
 import '../widgets/common/error_view.dart';
 import '../widgets/common/trust_level_skeleton.dart';
 import '../services/network/discourse_dio.dart';
+import '../services/network/webview/webview_adapter_settings_service.dart';
+import '../services/log/log_writer.dart';
+import '../widgets/browser/browser_document_loader.dart';
 import '../l10n/s.dart';
 
 class TrustLevelRequirementsPage extends ConsumerStatefulWidget {
@@ -26,6 +33,10 @@ class _TrustLevelRequirementsPageState
   Object? _error;
   StackTrace? _errorStack;
   TrustLevelData? _data;
+  bool _useBrowser = false;
+  int _requestId = 0;
+  CancelToken? _cancelToken;
+  static const _documentUrl = 'https://connect.linux.do/';
 
   @override
   void initState() {
@@ -34,18 +45,36 @@ class _TrustLevelRequirementsPageState
   }
 
   Future<void> _fetchData() async {
+    final requestId = ++_requestId;
+    _cancelToken?.cancel();
     setState(() {
       _isLoading = true;
       _error = null;
       _errorStack = null;
+      _useBrowser = WebViewAdapterSettingsService.instance.effectiveEnabled;
     });
+    LogWriter.instance.write({
+      'type': 'network',
+      'event': 'trust_level_transport_selected',
+      'transport': _useBrowser ? 'browser_navigation' : 'dio',
+      'persistentWebViewEnabled':
+          WebViewAdapterSettingsService.instance.persistentEnabled,
+      'sessionFallbackEnabled':
+          WebViewAdapterSettingsService.instance.sessionFallbackEnabled,
+    });
+    if (_useBrowser) return;
 
+    final dio = DiscourseDio.create();
+    final cancelToken = _cancelToken = CancelToken();
     try {
-      final dio = DiscourseDio.create();
-      final response = await dio.get('https://connect.linux.do/');
+      final response = await dio.get<String>(
+        _documentUrl,
+        cancelToken: cancelToken,
+      );
+      if (!mounted || requestId != _requestId) return;
 
       if (response.statusCode == 200) {
-        await _parseHtml(response.data);
+        await _parseHtml(response.data ?? '', requestId);
       } else {
         if (!mounted) return;
         setState(() {
@@ -56,15 +85,25 @@ class _TrustLevelRequirementsPageState
         });
       }
     } catch (e, s) {
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _error = e;
         _errorStack = s;
         _isLoading = false;
       });
+    } finally {
+      dio.close(force: true);
     }
   }
 
-  Future<void> _parseHtml(String htmlContent) async {
+  @override
+  void dispose() {
+    _requestId++;
+    _cancelToken?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _parseHtml(String htmlContent, int requestId) async {
     try {
       final document = html_parser.parse(htmlContent);
 
@@ -75,7 +114,7 @@ class _TrustLevelRequirementsPageState
 
       final emptyState = await _parseEmptyState(cardDiv);
       if (emptyState != null) {
-        if (!mounted) return;
+        if (!mounted || requestId != _requestId) return;
         setState(() {
           _data = emptyState;
           _isLoading = false;
@@ -190,7 +229,7 @@ class _TrustLevelRequirementsPageState
       final statusText = statusEl?.text.trim() ?? '';
       final isStatusMet = statusEl?.classes.contains('status-met') ?? false;
 
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _data = TrustLevelData(
           title: title,
@@ -208,7 +247,7 @@ class _TrustLevelRequirementsPageState
         _isLoading = false;
       });
     } catch (e, s) {
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _error = e;
         _errorStack = s;
@@ -259,7 +298,7 @@ class _TrustLevelRequirementsPageState
     try {
       return await ref.read(userSummaryProvider.future);
     } catch (_) {
-      return ref.read(userSummaryProvider).value;
+      return mounted ? ref.read(userSummaryProvider).value : null;
     }
   }
 
@@ -421,11 +460,29 @@ class _TrustLevelRequirementsPageState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    if (_isLoading && _useBrowser) {
+      final requestId = _requestId;
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.trustLevel_appBarTitle)),
+        body: SafeArea(
+          child: BrowserDocumentLoader(
+            key: ValueKey(requestId),
+            url: _documentUrl,
+            onDocument: (html) => _parseHtml(html, requestId),
+            onError: (error, stack) {
+              if (!mounted || requestId != _requestId) return;
+              setState(() {
+                _error = error;
+                _errorStack = stack;
+                _isLoading = false;
+              });
+            },
+          ),
+        ),
+      );
+    }
 
-    // Background color strictly following the theme surface
     return Scaffold(
-      backgroundColor: colorScheme.surface,
       body: _isLoading
           ? const TrustLevelSkeleton()
           : _error != null
@@ -483,16 +540,16 @@ class _TrustLevelRequirementsPageState
     Color badgeText;
     switch (_data!.badgeType) {
       case TlBadgeType.success:
-        badgeBg = const Color(0xFF22c55e).withValues(alpha: 0.1);
-        badgeText = const Color(0xFF22c55e);
+        badgeBg = context.appColors.green.withValues(alpha: 0.1);
+        badgeText = context.appColors.green;
         break;
       case TlBadgeType.danger:
-        badgeBg = const Color(0xFFef4444).withValues(alpha: 0.1);
-        badgeText = const Color(0xFFef4444);
+        badgeBg = context.appColors.red.withValues(alpha: 0.1);
+        badgeText = context.appColors.red;
         break;
       default:
-        badgeBg = const Color(0xFFf59e0b).withValues(alpha: 0.1);
-        badgeText = const Color(0xFFf59e0b);
+        badgeBg = context.appColors.orange.withValues(alpha: 0.1);
+        badgeText = context.appColors.orange;
         break;
     }
 
@@ -520,7 +577,7 @@ class _TrustLevelRequirementsPageState
                 child: Icon(
                   Symbols.verified_user_rounded,
                   size: 200,
-                  color: colorScheme.primary.withValues(alpha: 0.05),
+                  color: context.emphasis.accent.withValues(alpha: 0.05),
                 ),
               ),
               Positioned(
@@ -555,11 +612,13 @@ class _TrustLevelRequirementsPageState
                           horizontal: 10,
                           vertical: 4,
                         ),
-                        decoration: BoxDecoration(
+                        decoration: ShapeDecoration(
                           color: badgeBg,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: badgeText.withValues(alpha: 0.2),
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: context.shapes.borderRadius(20),
+                            side: BorderSide(
+                              color: badgeText.withValues(alpha: 0.2),
+                            ),
                           ),
                         ),
                         child: Text(
@@ -588,19 +647,21 @@ class _TrustLevelRequirementsPageState
     final colorScheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-        ),
-        boxShadow: [
+        shadows: [
           BoxShadow(
             color: colorScheme.shadow.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(16),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,8 +713,8 @@ class _TrustLevelRequirementsPageState
     // met -> #22c55e, unmet -> #f59e0b
     // Increase size to match 88px ~ 80-90 logical pixels
     final color = ring.isMet
-        ? const Color(0xFF22c55e)
-        : const Color(0xFFf59e0b);
+        ? context.appColors.green
+        : context.appColors.orange;
 
     return Column(
       children: [
@@ -712,8 +773,8 @@ class _TrustLevelRequirementsPageState
     final colorScheme = theme.colorScheme;
 
     final labelColor = bar.isMet
-        ? const Color(0xFF22c55e)
-        : const Color(0xFFf59e0b);
+        ? context.appColors.green
+        : context.appColors.orange;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -740,8 +801,8 @@ class _TrustLevelRequirementsPageState
             ],
           ),
           const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+          ClipRSuperellipse(
+            borderRadius: context.shapes.borderRadius(4),
             child: Container(
               height: 8,
               width: double.infinity,
@@ -750,25 +811,33 @@ class _TrustLevelRequirementsPageState
                 alignment: Alignment.centerLeft,
                 widthFactor: bar.progress,
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     gradient: LinearGradient(
                       colors: bar.isMet
-                          ? [const Color(0xFF22c55e), const Color(0xFF4ade80)]
-                          : [const Color(0xFFf59e0b), const Color(0xFFfbbf24)],
+                          ? [
+                              context.appColors.green,
+                              context.appColors.green.shade300,
+                            ]
+                          : [
+                              context.appColors.orange,
+                              context.appColors.orange.shade300,
+                            ],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(4),
-                    boxShadow: [
+                    shadows: [
                       BoxShadow(
                         color: bar.isMet
-                            ? const Color(0xFF22c55e).withValues(alpha: 0.4)
-                            : const Color(0xFFf59e0b).withValues(alpha: 0.4),
+                            ? context.appColors.green.withValues(alpha: 0.4)
+                            : context.appColors.orange.withValues(alpha: 0.4),
                         blurRadius: 6,
                         spreadRadius: 0,
                         offset: const Offset(0, 0),
                       ),
                     ],
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: context.shapes.borderRadius(4),
+                    ),
                   ),
                 ),
               ),
@@ -813,29 +882,33 @@ class _TrustLevelRequirementsPageState
 
   Widget _buildQuotaCard(ThemeData theme, TlQuotaData quota) {
     final colorScheme = theme.colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Met: default card style
     // Unmet: red border, red bg tint
 
     final borderColor = quota.isMet
         ? colorScheme.outlineVariant.withValues(alpha: 0.4)
-        : const Color(0xFFef4444).withValues(alpha: 0.3);
+        : context.appColors.red.withValues(alpha: 0.3);
 
     final bgColor = quota.isMet
         ? colorScheme.surface
-        : (isDark ? const Color(0xFF2e0a0a) : const Color(0xFFfef2f2));
+        : (Color.alphaBlend(
+            context.appColors.red.withValues(alpha: .08),
+            theme.colorScheme.surface,
+          ));
 
     final textColor = quota.isMet
         ? colorScheme.onSurfaceVariant
-        : const Color(0xFFef4444);
+        : context.appColors.red;
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(12),
+          side: BorderSide(color: borderColor),
+        ),
       ),
       child: Column(
         children: [
@@ -869,17 +942,16 @@ class _TrustLevelRequirementsPageState
               // Used slots are danger style, unused are success style
               final isUsed = index < quota.usedSlots;
               final color = isUsed
-                  ? const Color(0xFFef4444)
-                  : const Color(0xFF22c55e);
+                  ? context.appColors.red
+                  : context.appColors.green;
 
               return Expanded(
                 child: Container(
                   height: 6,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     color: color.withValues(alpha: isUsed ? 0.9 : 0.2),
-                    borderRadius: BorderRadius.circular(3),
-                    boxShadow: isUsed
+                    shadows: isUsed
                         ? [
                             BoxShadow(
                               color: color.withValues(alpha: 0.3),
@@ -887,6 +959,9 @@ class _TrustLevelRequirementsPageState
                             ),
                           ]
                         : null,
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: context.shapes.borderRadius(3),
+                    ),
                   ),
                 ),
               );
@@ -901,32 +976,38 @@ class _TrustLevelRequirementsPageState
     // If Met -> Green style
     // If Unmet -> Red style
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     Color bgColor;
     Color borderColor;
     Color iconBg;
     Color iconColor;
 
     if (veto.isMet) {
-      bgColor = isDark ? const Color(0xFF0a2e14) : const Color(0xFFf0fdf4);
-      borderColor = const Color(0xFF22c55e).withValues(alpha: 0.2);
-      iconBg = const Color(0xFF22c55e).withValues(alpha: 0.15);
-      iconColor = const Color(0xFF22c55e);
+      bgColor = Color.alphaBlend(
+        context.appColors.green.withValues(alpha: .08),
+        theme.colorScheme.surface,
+      );
+      borderColor = context.appColors.green.withValues(alpha: 0.2);
+      iconBg = context.appColors.green.withValues(alpha: 0.15);
+      iconColor = context.appColors.green;
     } else {
-      bgColor = isDark ? const Color(0xFF2e0a0a) : const Color(0xFFfef2f2);
-      borderColor = const Color(0xFFef4444).withValues(alpha: 0.2);
-      iconBg = const Color(0xFFef4444).withValues(alpha: 0.15);
-      iconColor = const Color(0xFFef4444);
+      bgColor = Color.alphaBlend(
+        context.appColors.red.withValues(alpha: .08),
+        theme.colorScheme.surface,
+      );
+      borderColor = context.appColors.red.withValues(alpha: 0.2);
+      iconBg = context.appColors.red.withValues(alpha: 0.15);
+      iconColor = context.appColors.red;
     }
 
     return Container(
       height: 100,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(12),
+          side: BorderSide(color: borderColor),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -937,9 +1018,9 @@ class _TrustLevelRequirementsPageState
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(
+                decoration: ShapeDecoration(
                   color: iconBg,
-                  shape: BoxShape.circle,
+                  shape: context.shapes.circle(),
                 ),
                 child: Icon(
                   veto.isMet ? Symbols.check_rounded : Symbols.close_rounded,
@@ -978,8 +1059,8 @@ class _TrustLevelRequirementsPageState
 
   Widget _buildFooter(ThemeData theme) {
     final statusColor = _data!.isStatusMet
-        ? const Color(0xFF22c55e)
-        : const Color(0xFFef4444);
+        ? context.appColors.green
+        : context.appColors.red;
 
     return Column(
       children: [
@@ -998,10 +1079,12 @@ class _TrustLevelRequirementsPageState
         if (_data!.statusText.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: statusColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: context.shapes.borderRadius(12),
+                side: BorderSide(color: statusColor.withValues(alpha: 0.2)),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1055,12 +1138,14 @@ class _TrustLevelRequirementsPageState
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Container(
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
+                    decoration: ShapeDecoration(
                       color: colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(
-                          alpha: 0.3,
+                      shape: RoundedSuperellipseBorder(
+                        borderRadius: context.shapes.borderRadius(16),
+                        side: BorderSide(
+                          color: colorScheme.outlineVariant.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                       ),
                     ),
@@ -1070,15 +1155,15 @@ class _TrustLevelRequirementsPageState
                         Container(
                           width: 56,
                           height: 56,
-                          decoration: BoxDecoration(
+                          decoration: ShapeDecoration(
                             color: colorScheme.primaryContainer.withValues(
                               alpha: 0.45,
                             ),
-                            shape: BoxShape.circle,
+                            shape: context.shapes.circle(),
                           ),
                           child: Icon(
                             Symbols.star_rounded,
-                            color: colorScheme.primary,
+                            color: context.emphasis.accent,
                             size: 28,
                           ),
                         ),
@@ -1178,17 +1263,19 @@ class _TrustLevelRequirementsPageState
     final colorScheme = theme.colorScheme;
     final isMet = item.isMet;
     final progress = item.progress;
-    final color = isMet ? const Color(0xFF22c55e) : const Color(0xFFf59e0b);
+    final color = isMet ? context.appColors.green : context.appColors.orange;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: context.shapes.borderRadius(12),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
         ),
         child: Column(
@@ -1225,9 +1312,7 @@ class _TrustLevelRequirementsPageState
             M3eLinearProgress(
               value: progress,
               color: color,
-              trackColor: colorScheme.secondaryContainer.withValues(
-                alpha: 0.5,
-              ),
+              trackColor: colorScheme.secondaryContainer.withValues(alpha: 0.5),
             ),
           ],
         ),

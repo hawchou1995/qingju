@@ -1,5 +1,5 @@
 import 'package:app_icons/app_icons.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:m3e_ui/m3e_ui.dart';
 
 /// 余额卡片的恢复操作：保留操作文案，处理中显示进度并禁用点击。
@@ -25,15 +25,18 @@ class BalanceCardActionButton extends StatelessWidget {
         : const Icon(Symbols.refresh_rounded, size: 18);
 
     if (filled) {
-      return FilledButton.icon(
-        onPressed: isLoading ? null : onPressed,
-        icon: icon,
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.white.withValues(alpha: 0.2),
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.15),
-          disabledForegroundColor: Colors.white70,
+      return M3eElasticPress(
+        enabled: !isLoading,
+        child: FilledButton.icon(
+          onPressed: isLoading ? null : onPressed,
+          icon: icon,
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: Colors.white.withValues(alpha: 0.15),
+            disabledForegroundColor: Colors.white70,
+          ),
         ),
       );
     }

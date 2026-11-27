@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:common_ui/common_ui.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:m3e_ui/m3e_ui.dart';
-import 'package:window_manager/window_manager.dart';
+import 'package:window_manager/legacy.dart';
 
 import '../../navigation/nav_action_bus.dart';
 import '../../providers/preferences_provider.dart';
@@ -206,44 +206,51 @@ class _NavigationRailItem extends StatelessWidget {
         ? colorScheme.onSecondaryContainer
         : colorScheme.onSurfaceVariant;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Material(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: SizedBox(
-            height: 56,
-            child: extended
-                ? Row(
-                    children: [
-                      const SizedBox(width: 16),
-                      IconTheme(
+    return Tooltip(
+      message: extended ? '' : label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Material(
+          color: backgroundColor,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: context.shapes.borderRadius(16),
+          ),
+          child: InkWell(
+            customBorder: RoundedSuperellipseBorder(
+              borderRadius: context.shapes.borderRadius(16),
+            ),
+            onTap: onTap,
+            child: SizedBox(
+              height: 56,
+              child: extended
+                  ? Row(
+                      children: [
+                        const SizedBox(width: 16),
+                        IconTheme(
+                          data: IconThemeData(color: iconColor, size: 24),
+                          child: icon,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: iconColor,
+                              fontWeight: selected
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: IconTheme(
                         data: IconThemeData(color: iconColor, size: 24),
                         child: icon,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            color: iconColor,
-                            fontWeight: selected
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Center(
-                    child: IconTheme(
-                      data: IconThemeData(color: iconColor, size: 24),
-                      child: icon,
                     ),
-                  ),
+            ),
           ),
         ),
       ),
@@ -433,28 +440,6 @@ abstract final class _CapsuleMetrics {
   /// 达到最大拉伸所需的速度（槽位/秒）
   static const double fullStretchSlotsPerSecond = 8;
 
-  /// pill 随速度的横向拉伸量。
-  ///
-  /// 快速连点时 pill 被“拉长”，停下来恢复原形 —— 这是悬浮底栏
-  /// 最显著的动态特征，比单纯平移多一层“有质量”的手感。
-  static double stretchFor(double slotsPerSecond) =>
-      (slotsPerSecond.abs() / fullStretchSlotsPerSecond * maxStretch).clamp(
-        0.0,
-        maxStretch,
-      );
-
-  /// 拉伸的变换原点（0=左缘，0.5=居中，1=右缘）。
-  ///
-  /// 原点朝运动方向偏移：向右飞时钉住右端、尾巴向左拖出，形成
-  /// “被甩在后面”的观感。固定居中的话两端均匀外撑，只像变胖。
-  /// 限幅 0.15~0.85：完全钉到端点会让回弹显得生硬。
-  static double stretchOriginX(double slotsPerSecond, double stretch) {
-    if (stretch <= 0 || slotsPerSecond == 0) return 0.5;
-    final direction = slotsPerSecond > 0 ? 1.0 : -1.0;
-    final normalized = (stretch / maxStretch).clamp(0.0, 1.0);
-    return (0.5 + direction * normalized * 0.35).clamp(0.15, 0.85);
-  }
-
   /// 带字态 item 基准高
   static const double itemHeightLabeled = 48;
 
@@ -514,9 +499,8 @@ abstract final class _CapsuleMetrics {
   /// 行高补偿。缩放 ≤1 时恒为基准值，不影响默认观感。
   static double itemHeight(BuildContext context, {required bool labelless}) {
     if (labelless) return itemHeightLabelless;
-    final scaled = MediaQuery.textScalerOf(
-      context,
-    ).scale(labelSize * labelHeight);
+    final scaled = MediaQuery.textScalerOf(context)
+        .scale(labelSize * labelHeight);
     final natural = iconTop + iconSize + iconGap + scaled + labelBottom;
     return math.max(itemHeightLabeled, natural);
   }
@@ -606,8 +590,8 @@ class _FloatingBottomBarShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final barHeight = itemHeight + _CapsuleMetrics.innerInset * 2;
-    final radius = barHeight / 2;
+    // 与内部选中胶囊使用相同的 full token；方正主题一并收角。
+    const radius = 9999.0;
 
     // 内容留白（最内层，玻璃/实色两种底色共用）
     final content = Padding(
@@ -615,11 +599,11 @@ class _FloatingBottomBarShell extends StatelessWidget {
       child: child,
     );
 
-    // 柔光玻璃材质：局部背景模糊 + 折射 + 方向性边缘光。
-    // 不支持 shader 时才使用均匀模糊与降级描边。
-    // 材质统一遵循全局玻璃策略；关闭时直接出实色，不建离屏层。
+    // 柔光玻璃材质：根部统一截取的背景模糊 + 折射 + 方向性边缘光，
+    // 各平台一致；shader 加载完成前与基础档使用均匀模糊与降级描边。
+    // 材质统一遵循全局玻璃策略；关闭时直接出实色。
     //
-    // 外壳 ClipRRect 只限制可见范围，不保证背景纹理原点归零。
+    // 外壳 ClipRSuperellipse 只限制可见范围。
     // tintColor 不传：用配方里的中性灰阶（浅 0.99 / 深 0.12）。传
     // surfaceContainer 会被主题色染成彩色塑料板，失去玻璃的中性感。
     final body = GlassSurfaceFrame(
@@ -763,7 +747,7 @@ class _CapsuleNavBarState extends State<_CapsuleNavBar>
             return Stack(
               children: [
                 // 滑动选中 pill：铺满整个条目槽位，位置弹簧插值，
-                // 并随弹簧速度横向拉伸（详见 _CapsuleMetrics.stretchFor）
+                // 并随弹簧速度横向拉伸。
                 AnimatedBuilder(
                   animation: _position,
                   builder: (context, _) {
@@ -772,12 +756,10 @@ class _CapsuleNavBarState extends State<_CapsuleNavBar>
                       0.0,
                       (count - 1).toDouble(),
                     );
-                    // velocity 单位已经是「槽位/秒」，与拉伸公式同量纲
-                    final velocity = _position.velocity;
-                    final stretch = _CapsuleMetrics.stretchFor(velocity);
-                    final originX = _CapsuleMetrics.stretchOriginX(
-                      velocity,
-                      stretch,
+                    final stretch = axisStretch(
+                      _position.velocity /
+                          _CapsuleMetrics.fullStretchSlotsPerSecond,
+                      maxStretch: _CapsuleMetrics.maxStretch,
                     );
                     return Positioned(
                       left: slot * pos,
@@ -788,12 +770,20 @@ class _CapsuleNavBarState extends State<_CapsuleNavBar>
                         child: Transform(
                           // 只横向拉伸；纵向不动（纵向一起缩会变成「弹性
                           // 球」，而不是「被甩在后面的拖尾」）
-                          transform: Matrix4.diagonal3Values(1 + stretch, 1, 1),
-                          alignment: Alignment(originX * 2 - 1, 0),
+                          transform: Matrix4.diagonal3Values(
+                            1 + stretch.amount,
+                            1,
+                            1,
+                          ),
+                          alignment: Alignment(stretch.origin * 2 - 1, 0),
                           child: DecoratedBox(
                             decoration: ShapeDecoration(
                               color: pillColor,
-                              shape: const StadiumBorder(),
+                              shape: RoundedSuperellipseBorder(
+                                borderRadius: BorderRadius.all(
+                                  context.shapes.radius(9999),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -868,7 +858,9 @@ class _CapsuleNavItem extends StatelessWidget {
         message: dest.label,
         child: InkWell(
           // 墨水跟随 pill 的 stadium 造型（pill 铺满整个条目）
-          customBorder: const StadiumBorder(),
+          customBorder: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.all(context.shapes.radius(9999)),
+          ),
           onTap: onTap,
           child: labelless
               // 无字态：图标在条目内居中

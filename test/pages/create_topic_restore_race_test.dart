@@ -5,10 +5,9 @@ import 'dart:ui' as ui;
 
 import 'package:common_ui/common_ui.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/l10n/s.dart';
@@ -144,11 +143,7 @@ void main() {
             child: MaterialApp(
               navigatorKey: navigator,
               locale: const Locale('zh'),
-              localizationsDelegates: const [
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
+              localizationsDelegates: GlobalMaterialLocalizations.delegates,
               supportedLocales: AppLocaleUtils.supportedLocales,
               scrollBehavior: const DesktopScrollInteractionBehavior(),
               theme: ThemeData(
@@ -291,6 +286,11 @@ void main() {
         reason: '文末不能被滚出正文可见区 seed=$seed tail=$tail viewport=$visible',
       );
       expect(caret.overlaps(visible), isTrue);
+
+      // 页面销毁后草稿远程检查可能仍在途（请求总时限 30s）：先卸载页面再
+      // 推进伪时钟让它按时限收尾，避免随机时序下残留计时器
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 31));
     });
   }
 }

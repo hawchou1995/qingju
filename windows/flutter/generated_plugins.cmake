@@ -5,34 +5,31 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
+  desktop_multi_window
   dynamic_color
   file_selector_windows
   flutter_acrylic
   flutter_avif_windows
   flutter_inappwebview_windows
-  flutter_js
   flutter_secure_storage_windows
   flutter_timezone
   gal
   irondash_engine_context
   media_kit_libs_windows_video
-  media_kit_video
   quickjs_engine
   record_windows
   screen_brightness_windows
-  screen_retriever_windows
-  share_plus
   super_native_extensions
   url_launcher_windows
+  share_plus
   volume_controller
-  window_manager
+  media_kit_video
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
   flutter_local_notifications_windows
   jni
   native_animated_image_windows
-  rhttp
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

@@ -1,8 +1,9 @@
+import '../utils/avatar_url.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show compute, visibleForTesting;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../constants.dart';
 import '../models/topic.dart';
 import '../models/category.dart';
@@ -198,6 +199,17 @@ class PreloadedDataService {
           .toList();
     }
     return null;
+  }
+
+  /// 获取站点通知类型表（服务端类型名 → 类型 id，含已安装插件的类型）
+  Future<Map<String, int>> getNotificationTypes() async {
+    await _ensureLoaded();
+    final raw = _site?['notification_types'];
+    if (raw is! Map) return const {};
+    return {
+      for (final entry in raw.entries)
+        if (entry.value is int) '${entry.key}': entry.value as int,
+    };
   }
 
   /// 获取帖子操作类型（举报类型等）
@@ -511,6 +523,7 @@ class PreloadedDataService {
     _loaded = false;
     _currentUser = null;
     _siteSettings = null;
+    AvatarUrl.configure(_siteSettings?['avatar_sizes']);
     _site = null;
     _topicListData = null;
     _cachedTopicListResponse = null;
@@ -534,13 +547,17 @@ class PreloadedDataService {
   ///
   /// 静音过滤等逻辑依赖这两份预加载数据，而本类是单例、真实加载路径要发
   /// 网络请求。给测试开一个最小口子，好过把那些判定写成不可测。
+  /// [loaded] 为 true 时按已加载处理，页面测试里异步读取也不会去发首页请求。
   @visibleForTesting
   void debugSeed({
     Map<String, dynamic>? currentUser,
     Map<String, dynamic>? siteSettings,
+    bool? loaded,
   }) {
     _currentUser = currentUser;
     _siteSettings = siteSettings;
+    if (loaded != null) _loaded = loaded;
+    AvatarUrl.configure(_siteSettings?['avatar_sizes']);
   }
 
   void reset() {
@@ -806,6 +823,7 @@ class PreloadedDataService {
       // 解析 siteSettings
       if (preloaded.containsKey('siteSettings')) {
         _siteSettings = preloaded['siteSettings'] as Map<String, dynamic>;
+        AvatarUrl.configure(_siteSettings?['avatar_sizes']);
 
         // 提取 reactions 配置
         final reactionsStr =

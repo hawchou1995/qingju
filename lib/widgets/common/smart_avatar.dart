@@ -1,8 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:jovial_svg/jovial_svg.dart';
+
 import '../../services/discourse_cache_manager.dart';
+import '../../services/image_decode_spec_memo.dart';
+import '../../services/svg_image_cache.dart';
 import '../../utils/svg_utils.dart';
+import 'first_paint_probe.dart';
 
 /// 智能头像组件
 ///
@@ -55,6 +59,24 @@ bool isSquareAvatarUrl(String? url) {
 }
 
 class _SmartAvatarState extends State<SmartAvatar> {
+  VoidCallback? _releaseForeground;
+
+  void _onFirstPaint() {
+    final url = widget.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      _releaseForeground ??= BlobImageCache.retainForeground(
+        BlobImageCache.avatarBucket,
+        url,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _releaseForeground?.call();
+    super.dispose();
+  }
+
   /// SVG 探测结果的全局记忆(URL → svg 内容,null = 已确认非 SVG)。
   ///
   /// 绝大多数头像不是 SVG,却在**每次挂载**付一次缓存探测(文件读)
@@ -90,6 +112,8 @@ class _SmartAvatarState extends State<SmartAvatar> {
   void didUpdateWidget(SmartAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) {
+      _releaseForeground?.call();
+      _releaseForeground = null;
       _setupSvgProbe(widget.imageUrl);
     }
   }
@@ -125,7 +149,9 @@ class _SmartAvatarState extends State<SmartAvatar> {
       );
       if (bytes == null || bytes.isEmpty) return null;
       if (!SvgUtils.isSvgBytes(bytes)) return null;
-      return SvgUtils.sanitize(SvgUtils.decodeSvgBytes(bytes));
+      final content = SvgUtils.sanitize(SvgUtils.decodeSvgBytes(bytes));
+      await _preparse(content);
+      return content;
     } catch (_) {
       return null;
     }
@@ -145,14 +171,17 @@ class _SmartAvatarState extends State<SmartAvatar> {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final decodeSide = (innerSize * dpr * 2).round().clamp(1, 512);
     return Image(
-      image: ResizeImage(
-        BlobImageProvider(
-          widget.imageUrl!,
-          bucket: BlobImageCache.avatarBucket,
+      image: ImageDecodeSpecMemo.remember(
+        widget.imageUrl!,
+        ResizeImage(
+          BlobImageProvider(
+            widget.imageUrl!,
+            bucket: BlobImageCache.avatarBucket,
+          ),
+          width: decodeSide,
+          height: decodeSide,
+          policy: ResizeImagePolicy.fit,
         ),
-        width: decodeSide,
-        height: decodeSide,
-        policy: ResizeImagePolicy.fit,
       ),
       width: innerSize,
       height: innerSize,
@@ -209,7 +238,13 @@ class _SmartAvatarState extends State<SmartAvatar> {
       // 避免列表中多个动图头像同时连累整个 list item 重绘。
       child = RepaintBoundary(
         child: Image(
-          image: discourseImageProvider(widget.imageUrl!),
+          image: ImageDecodeSpecMemo.remember(
+            widget.imageUrl!,
+            discourseImageProvider(
+              widget.imageUrl!,
+              bucket: BlobImageCache.avatarBucket,
+            ),
+          ),
           width: innerSize,
           height: innerSize,
           fit: BoxFit.cover,
@@ -253,9 +288,11 @@ class _SmartAvatarState extends State<SmartAvatar> {
 
     final isSquare = isSquareAvatarUrl(widget.imageUrl);
     final innerDecoration = isSquare
-        ? BoxDecoration(
+        ? ShapeDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(innerRadius * 0.2),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(innerRadius * 0.2),
+            ),
           )
         : BoxDecoration(color: bgColor, shape: BoxShape.circle);
 
@@ -272,9 +309,11 @@ class _SmartAvatarState extends State<SmartAvatar> {
     // 如果有边框，在外层添加，总尺寸保持 radius * 2
     if (widget.border != null) {
       final outerDecoration = isSquare
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(widget.radius * 0.2),
-              border: widget.border,
+          ? ShapeDecoration(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(widget.radius * 0.2),
+                side: widget.border!.top,
+              ),
             )
           : BoxDecoration(shape: BoxShape.circle, border: widget.border);
       avatar = Container(
@@ -286,12 +325,16 @@ class _SmartAvatarState extends State<SmartAvatar> {
       );
     }
 
-    return avatar;
+    return FirstPaintProbe(
+      key: ValueKey(widget.imageUrl),
+      onFirstPaint: _onFirstPaint,
+      child: avatar,
+    );
   }
 
   Widget? _buildSvg(String svgContent, double size) {
     try {
-      final si = ScalableImage.fromSvgString(svgContent, warnF: (_) {});
+      final si = SvgImageCache.sync(svgContent);
       return SizedBox(
         width: size,
         height: size,
@@ -369,6 +412,7 @@ class _SvgFallbackBuilderState extends State<_SvgFallbackBuilder> {
 
       if (SvgUtils.isSvgBytes(bytes)) {
         final svgString = SvgUtils.sanitize(SvgUtils.decodeSvgBytes(bytes));
+        await _preparse(svgString);
         if (mounted) {
           setState(() {
             _svgContent = svgString;
@@ -391,7 +435,7 @@ class _SvgFallbackBuilderState extends State<_SvgFallbackBuilder> {
   Widget build(BuildContext context) {
     if (_svgContent != null) {
       try {
-        final si = ScalableImage.fromSvgString(_svgContent!, warnF: (_) {});
+        final si = SvgImageCache.sync(_svgContent!);
         return SizedBox(
           width: widget.size,
           height: widget.size,
@@ -409,4 +453,11 @@ class _SvgFallbackBuilderState extends State<_SvgFallbackBuilder> {
 
     return widget.fallback;
   }
+}
+
+/// 在异步探测阶段预先解析，构建时只做缓存命中；解析失败留给构建期兜底处理。
+Future<void> _preparse(String content) async {
+  try {
+    await SvgImageCache.load(content);
+  } catch (_) {}
 }

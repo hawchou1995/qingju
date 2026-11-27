@@ -1,10 +1,12 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
+import 'glass_capture.dart';
 import 'glass_edge_painter.dart';
 import 'glass_optical_border.dart';
 import 'glass_settings.dart';
+import 'glass_superellipse.dart';
 
 /// 柔光玻璃材质配方。
 ///
@@ -19,8 +21,6 @@ class GlassRecipe {
     required this.blurSigmaPx,
     required this.tintAlpha,
     this.tintDarkAlpha,
-    required this.tintLightGray,
-    required this.tintDarkGray,
     required this.saturation,
     required this.brightness,
     required this.contrast,
@@ -31,7 +31,6 @@ class GlassRecipe {
     required this.highlightAlpha,
     required this.darkHighlightMultiplier,
     required this.noise,
-    required this.postBlurSigma,
     required this.fallbackEdgeWidth,
     required this.fallbackLightAlpha,
     required this.fallbackDarkAlpha,
@@ -48,11 +47,6 @@ class GlassRecipe {
   final double? tintDarkAlpha;
   double tintAlphaFor(bool isDark) =>
       isDark ? tintDarkAlpha ?? tintAlpha : tintAlpha;
-
-  /// 色罩灰阶(浅色/深色)。刻意用**固定灰阶**而非主题色:玻璃是中性
-  /// 介质,用 surfaceContainer 会被主题色染成彩色塑料板。
-  final double tintLightGray;
-  final double tintDarkGray;
 
   /// 饱和度/亮度/对比度。玻璃不只是模糊,还会轻微提升饱和度 ——
   /// 缺了这步背景透过来会发灰。
@@ -82,16 +76,19 @@ class GlassRecipe {
   /// 磨砂噪点强度。导航使用轻微去带噪，不以粗颗粒代替背景柔化。
   final double noise;
 
-  /// 折射后的收口柔化(逻辑像素):抹平折射引入的高频锯齿
-  final double postBlurSigma;
-
   /// 降级描边宽度与明暗两档 alpha(无 shader 时替代光学边缘光)
   final double fallbackEdgeWidth;
   final double fallbackLightAlpha;
   final double fallbackDarkAlpha;
 
-  /// 当前亮度下的色罩灰阶
-  double tintGrayFor(bool isDark) => isDark ? tintDarkGray : tintLightGray;
+  /// 色罩颜色：取主题自己的浮层中性色，浅色用最亮一级容器，深色用
+  /// surfaceContainer。这两级的明度与调校时的中性灰（0.99 / 0.12）相当，
+  /// 色相随主题，玻璃落在偏色页面上不会像从别的主题搬来的。不要换成
+  /// 强调色或 primaryContainer 一类的彩色容器，会把玻璃染成彩色塑料板。
+  static Color tintFor(ColorScheme scheme) =>
+      scheme.brightness == Brightness.dark
+      ? scheme.surfaceContainer
+      : scheme.surfaceContainerLowest;
 
   /// 在同一个表面上连续改变材质，避免叠加两层背景模糊。
   static GlassRecipe lerp(GlassRecipe a, GlassRecipe b, double t) {
@@ -102,8 +99,6 @@ class GlassRecipe {
       blurSigmaPx: mix(a.blurSigmaPx, b.blurSigmaPx),
       tintAlpha: mix(a.tintAlpha, b.tintAlpha),
       tintDarkAlpha: mix(a.tintAlphaFor(true), b.tintAlphaFor(true)),
-      tintLightGray: mix(a.tintLightGray, b.tintLightGray),
-      tintDarkGray: mix(a.tintDarkGray, b.tintDarkGray),
       saturation: mix(a.saturation, b.saturation),
       brightness: mix(a.brightness, b.brightness),
       contrast: mix(a.contrast, b.contrast),
@@ -117,7 +112,6 @@ class GlassRecipe {
         b.darkHighlightMultiplier,
       ),
       noise: mix(a.noise, b.noise),
-      postBlurSigma: mix(a.postBlurSigma, b.postBlurSigma),
       fallbackEdgeWidth: mix(a.fallbackEdgeWidth, b.fallbackEdgeWidth),
       fallbackLightAlpha: mix(a.fallbackLightAlpha, b.fallbackLightAlpha),
       fallbackDarkAlpha: mix(a.fallbackDarkAlpha, b.fallbackDarkAlpha),
@@ -131,8 +125,6 @@ class GlassRecipe {
   static const navigation = GlassRecipe(
     blurSigmaPx: 14,
     tintAlpha: 0.32,
-    tintLightGray: 0.99,
-    tintDarkGray: 0.12,
     saturation: 1.1025,
     brightness: 0.0,
     contrast: 1.0,
@@ -143,7 +135,6 @@ class GlassRecipe {
     highlightAlpha: 0.95,
     darkHighlightMultiplier: 0.20,
     noise: 0.012,
-    postBlurSigma: 0.4,
     fallbackEdgeWidth: 0.5,
     fallbackLightAlpha: 0.46,
     fallbackDarkAlpha: 0.08,
@@ -154,8 +145,6 @@ class GlassRecipe {
     blurSigmaPx: 32,
     tintAlpha: 0.56,
     tintDarkAlpha: 0.70,
-    tintLightGray: 0.99,
-    tintDarkGray: 0.12,
     saturation: 1.04,
     brightness: 0,
     contrast: 1,
@@ -166,7 +155,6 @@ class GlassRecipe {
     highlightAlpha: 0.70,
     darkHighlightMultiplier: 0.20,
     noise: 0.012,
-    postBlurSigma: 0.5,
     fallbackEdgeWidth: 0.5,
     fallbackLightAlpha: 0.40,
     fallbackDarkAlpha: 0.08,
@@ -177,8 +165,6 @@ class GlassRecipe {
     blurSigmaPx: 48,
     tintAlpha: 0.74,
     tintDarkAlpha: 0.80,
-    tintLightGray: 0.99,
-    tintDarkGray: 0.12,
     saturation: 1,
     brightness: 0,
     contrast: 1,
@@ -189,7 +175,6 @@ class GlassRecipe {
     highlightAlpha: 0.55,
     darkHighlightMultiplier: 0.20,
     noise: 0.008,
-    postBlurSigma: 0.5,
     fallbackEdgeWidth: 0.5,
     fallbackLightAlpha: 0.36,
     fallbackDarkAlpha: 0.08,
@@ -201,8 +186,6 @@ class GlassRecipe {
     blurSigmaPx: 64,
     tintAlpha: 0.80,
     tintDarkAlpha: 0.86,
-    tintLightGray: 0.99,
-    tintDarkGray: 0.12,
     saturation: 1.0,
     brightness: 0.0,
     contrast: 1.0,
@@ -213,7 +196,6 @@ class GlassRecipe {
     highlightAlpha: 0.72,
     darkHighlightMultiplier: 0.22,
     noise: 0.012,
-    postBlurSigma: 1.0,
     fallbackEdgeWidth: 0.5,
     fallbackLightAlpha: 0.46,
     fallbackDarkAlpha: 0.08,
@@ -225,8 +207,6 @@ class GlassRecipe {
     blurSigmaPx: 80,
     tintAlpha: 0.86,
     tintDarkAlpha: 0.90,
-    tintLightGray: 0.99,
-    tintDarkGray: 0.12,
     saturation: 1.0,
     brightness: 0.0,
     contrast: 1.0,
@@ -237,7 +217,6 @@ class GlassRecipe {
     highlightAlpha: 0.68,
     darkHighlightMultiplier: 0.22,
     noise: 0.008,
-    postBlurSigma: 0.75,
     fallbackEdgeWidth: 0.5,
     fallbackLightAlpha: 0.46,
     fallbackDarkAlpha: 0.08,
@@ -246,9 +225,10 @@ class GlassRecipe {
 
 /// 柔光玻璃表面。
 ///
-/// Impeller 下先用主模糊建立局部背景层，再在该层上折射并轻柔化。
-/// 两层 BackdropFilter 不能合并为一条 compose：后者仍会让 shader
-/// 直接读取父渲染层纹理，胶囊的局部坐标会与输入纹理错位。
+/// 背景来自根部的 [GlassCaptureHost]：每帧统一截取一次玻璃背后的内容并
+/// 缩小模糊，本组件按截取取样后折射（[GlassBackdrop]），不再逐块读取
+/// 背景；用画笔 shader 绘制，Skia 与 Impeller 都可用。不在宿主里时退回
+/// 一层背景模糊。
 ///
 /// 本组件不做形状裁切或投影，由调用方限制可见范围。独立使用时默认提供
 /// 细描边；外壳可通过 fallbackBorderRadius 委托本实例绘制降级边缘光。
@@ -257,27 +237,46 @@ class GlassSurface extends StatefulWidget {
     super.key,
     required this.recipe,
     required this.shape,
+    this.opticalShape,
     this.tintColor,
     this.enabled = true,
     this.drawFallbackBorder = true,
+    this.drawOpticalBorder = true,
     this.fallbackBorderRadius,
     this.child,
   });
 
-  /// 后端是否支持光学材质；描边切换仍须依据本实例实际渲染路径。
-  static bool get opticalEdgeAvailable =>
-      ui.ImageFilter.isShaderFilterSupported;
+  /// 后端是否支持光学材质。折射改为从截取图取样的画笔 shader，不再依赖
+  /// Impeller 的 shader 滤镜，各平台都支持；描边切换仍须依据本实例实际
+  /// 渲染路径（shader 加载完成前、失败时走降级）。
+  static bool get opticalEdgeAvailable => true;
+
+  /// 提前加载折射 shader。
+  ///
+  /// [ui.FragmentProgram.fromAsset] 虽然返回 Future，实际是在 microtask 里
+  /// 同步调用引擎：UI 线程上读 shader 资产并交给渲染后端注册编译，首次可达
+  /// 数百毫秒。首个玻璃组件出现时才加载，就会卡在它所在页面的入场动画里
+  /// （如完整编辑器的工具岛）。在空闲时调用本方法提前加载，之后的实例直接
+  /// 取缓存；后端不支持或已加载时什么都不做。
+  static void precacheProgram() {
+    if (!opticalEdgeAvailable) return;
+    _GlassSurfaceState._loadProgram();
+  }
 
   /// 场景配方,见 [GlassRecipe.navigation] / [GlassRecipe.sheet] /
   /// [GlassRecipe.dialog]
   final GlassRecipe recipe;
 
-  /// 玻璃形状。shader 支持四角相同的圆形圆角 [RoundedRectangleBorder]
-  /// 与 [StadiumBorder]；非对称或椭圆圆角等形状使用降级路径。
+  /// shader 支持四角等大的 [RoundedSuperellipseBorder]，并兼容圆弧形状。
+  /// 非对称或椭圆半径使用降级路径。
   final ShapeBorder shape;
 
-  /// 色罩颜色覆盖。默认为 null,用配方里的**固定灰阶**
-  /// ([GlassRecipe.tintGrayFor]) —— 不要随手传主题色,会把中性
+  /// 形变表面的透镜采样轮廓。底色仍严格使用 [shape]，由外层按同一路径裁切；
+  /// 变形期间可用规则圆角近似采样，避免切换材质造成闪变。
+  final ShapeBorder? opticalShape;
+
+  /// 色罩颜色覆盖。默认为 null,用主题的浮层中性色
+  /// ([GlassRecipe.tintFor]) —— 不要随手传强调色,会把中性
   /// 玻璃染成彩色塑料板。
   final Color? tintColor;
 
@@ -286,6 +285,9 @@ class GlassSurface extends StatefulWidget {
 
   /// 外壳自绘边缘光时关闭，避免均匀描边与方向性描边叠加。
   final bool drawFallbackBorder;
+
+  /// 自绘形变边缘时关闭，防止规则透镜描边露出实际轮廓。
+  final bool drawOpticalBorder;
 
   /// 外壳的方向性降级描边半径。由本实例按实际路径绘制，避免加载中或
   /// shader 加载失败时，外壳误判 GPU 能力而漏掉描边。
@@ -300,7 +302,7 @@ class GlassSurface extends StatefulWidget {
 class _GlassSurfaceState extends State<GlassSurface> {
   // 进程内只加载一次,所有玻璃实例共享
   static ui.FragmentProgram? _cachedProgram;
-  static Future<ui.FragmentProgram>? _loading;
+  static Future<ui.FragmentProgram?>? _loading;
   static bool _loggedPath = false;
 
   ui.FragmentProgram? _program;
@@ -336,19 +338,30 @@ class _GlassSurfaceState extends State<GlassSurface> {
       _program = cached;
       return;
     }
-    (_loading ??= ui.FragmentProgram.fromAsset(
-      'packages/common_ui/shaders/glass_surface.frag',
-    )).then(
-      (program) {
-        _cachedProgram = program;
-        _logPathOnce('折射玻璃 shader 已激活');
-        if (mounted) setState(() => _program = program);
-      },
-      // 资产缺失(如改过 .frag 忘了冷启动重建)→ 留在降级路径,不红屏
-      onError: (Object e, StackTrace s) {
-        _logPathOnce('shader 加载失败,走降级(改过 .frag 需冷启动重建): $e');
-      },
-    );
+    _loadProgram().then((program) {
+      if (program != null && mounted) setState(() => _program = program);
+    });
+  }
+
+  /// 进程内只加载一次，所有玻璃实例与 [GlassSurface.precacheProgram] 共享
+  static Future<ui.FragmentProgram?> _loadProgram() {
+    final cached = _cachedProgram;
+    if (cached != null) return Future.value(cached);
+    return _loading ??=
+        ui.FragmentProgram.fromAsset(
+          'packages/common_ui/shaders/glass_surface.frag',
+        ).then<ui.FragmentProgram?>(
+          (program) {
+            _cachedProgram = program;
+            _logPathOnce('折射玻璃 shader 已激活');
+            return program;
+          },
+          // 资产缺失(如改过 .frag 忘了冷启动重建)→ 留在降级路径,不红屏
+          onError: (Object e, StackTrace s) {
+            _logPathOnce('shader 加载失败,走降级(改过 .frag 需冷启动重建): $e');
+            return null;
+          },
+        );
   }
 
   static void _logPathOnce(String msg) {
@@ -361,6 +374,9 @@ class _GlassSurfaceState extends State<GlassSurface> {
   double? _cornerRadiusOf(ShapeBorder shape) {
     if (shape is StadiumBorder) return null;
     if (shape is RoundedRectangleBorder) {
+      return shape.borderRadius.resolve(Directionality.of(context)).topLeft.x;
+    }
+    if (shape is RoundedSuperellipseBorder) {
       final radius = shape.borderRadius
           .resolve(Directionality.of(context))
           .topLeft
@@ -372,8 +388,15 @@ class _GlassSurfaceState extends State<GlassSurface> {
 
   bool _shapeSupported(ShapeBorder shape) {
     if (shape is StadiumBorder) return true;
-    if (shape is! RoundedRectangleBorder) return false;
-    final radii = shape.borderRadius.resolve(Directionality.of(context));
+    final BorderRadiusGeometry borderRadius;
+    if (shape is RoundedSuperellipseBorder) {
+      borderRadius = shape.borderRadius;
+    } else if (shape is RoundedRectangleBorder) {
+      borderRadius = shape.borderRadius;
+    } else {
+      return false;
+    }
+    final radii = borderRadius.resolve(Directionality.of(context));
     final radius = radii.topLeft;
     return radius.x == radius.y &&
         radii.topRight == radius &&
@@ -386,6 +409,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
   ShapeBorder _shapeWithSide(ShapeBorder shape, BorderSide side) {
     if (shape is StadiumBorder) return shape.copyWith(side: side);
     if (shape is RoundedRectangleBorder) return shape.copyWith(side: side);
+    if (shape is RoundedSuperellipseBorder) return shape.copyWith(side: side);
     return shape;
   }
 
@@ -394,11 +418,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final recipe = widget.recipe;
-    // 默认用配方的固定灰阶,而非主题 surfaceContainer
-    final gray = recipe.tintGrayFor(isDark);
-    final tint =
-        widget.tintColor ??
-        Color.from(alpha: 1, red: gray, green: gray, blue: gray);
+    final tint = widget.tintColor ?? GlassRecipe.tintFor(theme.colorScheme);
 
     final settings = GlassSettingsScope.of(context);
     final highContrast = MediaQuery.maybeOf(context)?.highContrast ?? false;
@@ -414,7 +434,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
           highContrast: highContrast,
           locallyEnabled: widget.enabled,
         ) &&
-        _shapeSupported(widget.shape);
+        _shapeSupported(widget.opticalShape ?? widget.shape);
 
     // 前景始终留在同一个槽位；异步加载或切换模糊时只替换背景，不能
     // 重新挂载编辑器、焦点和导航动画。由前景布局尺寸约束背景，而不是
@@ -435,14 +455,14 @@ class _GlassSurfaceState extends State<GlassSurface> {
               : _buildFallback(context, tint, recipe, isDark),
         ),
         widget.child ?? const SizedBox.shrink(),
-        if (useShader)
+        if (useShader && widget.drawOpticalBorder)
           Positioned.fill(
             child: IgnorePointer(
               child: LayoutBuilder(
                 builder: (context, constraints) => CustomPaint(
                   painter: GlassOpticalBorder(
                     radius:
-                        _cornerRadiusOf(widget.shape) ??
+                        _cornerRadiusOf(widget.opticalShape ?? widget.shape) ??
                         constraints.maxHeight / 2,
                     isDark: isDark,
                     strength: recipe.highlightAlpha,
@@ -466,6 +486,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
     );
   }
 
+  /// 光学材质：截取背景上折射，再叠主题色罩
   Widget _shaderBackground(
     BuildContext context,
     ui.FragmentProgram program,
@@ -473,107 +494,69 @@ class _GlassSurfaceState extends State<GlassSurface> {
     GlassRecipe recipe,
     bool isDark,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = constraints.biggest;
-        if (!size.isFinite || size.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return _buildShaderGlass(
-          context: context,
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final opticalShape = widget.opticalShape ?? widget.shape;
+    final cornerRadius = _cornerRadiusOf(opticalShape);
+    final superellipse = opticalShape is RoundedSuperellipseBorder;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GlassBackdrop(
+          blurSigma: recipe.blurSigmaPx / dpr,
           program: program,
-          size: size,
-          tint: tint,
-          recipe: recipe,
-          isDark: isDark,
-        );
-      },
+          bend: recipe.refractionAmount + recipe.chromaticAberration,
+          opticalUniforms: (size) => _opticalUniforms(
+            size: size,
+            dpr: dpr,
+            radiusLogical: cornerRadius ?? size.height / 2,
+            superellipse: superellipse,
+            recipe: recipe,
+          ),
+        ),
+        DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: widget.shape,
+            color: tint.withValues(alpha: recipe.tintAlphaFor(isDark)),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildShaderGlass({
-    required BuildContext context,
-    required ui.FragmentProgram program,
+  /// shader 在取样映射之后的 uniform（顺序见 glass_surface.frag）：
+  /// u_dpr / u_rect / u_radius / 折射带、折射量、深度、色散 / 高光 /
+  /// 噪点 / 饱和度、亮度、对比度 / 超椭圆开关与两段 octant
+  static List<double> _opticalUniforms({
     required Size size,
-    required Color tint,
+    required double dpr,
+    required double radiusLogical,
+    required bool superellipse,
     required GlassRecipe recipe,
-    required bool isDark,
   }) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final radiusLogical = _cornerRadiusOf(widget.shape) ?? size.height / 2;
-
-    // 深色模式下白色边缘光必须大幅衰减,否则像描了荧光边
     // 窄高光由色罩上方的光学轮廓统一负责；shader 不重复加白边。
+    // 高光颜色取白：用黑边会让深色玻璃显脏
     const highlightAlpha = 0.0;
-    // 高光颜色:浅色模式偏白(玻璃迎光面),深色模式同样用白但已被
-    // darkHighlightMultiplier 压到很淡 —— 用黑边会让深色玻璃显脏
     const highlightGray = 1.0;
-
-    // uniform 布局(顺序即索引):
-    // 0-1 u_size(引擎填) / 2-3 u_origin / 4-5 u_rect / 6 u_radius
-    // 7 u_refract_h / 8 u_refract_amt / 9 u_depth / 10 u_chroma
-    // 11 u_hl_alpha / 12 u_hl_gray / 13 u_noise
-    // 14 u_saturation / 15 u_brightness / 16 u_contrast
-    // 每 build 新建实例,避免渲染途中改 uniform
-    final shader = program.fragmentShader()
-      ..setFloat(2, 0)
-      ..setFloat(3, 0)
-      ..setFloat(4, size.width * dpr)
-      ..setFloat(5, size.height * dpr)
-      ..setFloat(6, radiusLogical * dpr)
-      ..setFloat(7, recipe.refractionHeight * dpr)
-      ..setFloat(8, recipe.refractionAmount * dpr)
-      ..setFloat(9, recipe.depthEffect)
-      ..setFloat(10, recipe.chromaticAberration * dpr)
-      ..setFloat(11, highlightAlpha)
-      ..setFloat(12, highlightGray)
-      ..setFloat(13, recipe.noise)
-      ..setFloat(14, recipe.saturation)
-      ..setFloat(15, recipe.brightness)
-      ..setFloat(16, recipe.contrast);
-
-    // 主模糊放在独立的外层 BackdropFilter，不放进同一条 compose。
-    // 它先把背景画进受 ClipRect 约束的局部 pass，内层折射读取的才是
-    // 原点为胶囊左上角的纹理，而不是父层/整屏纹理。
-    final blurLogical = recipe.blurSigmaPx / dpr;
-    ui.ImageFilter filter = ui.ImageFilter.shader(shader);
-
-    // 折射后的极轻柔化:抹平透镜采样在陡峭区引入的高频锯齿
-    if (recipe.postBlurSigma > 0) {
-      filter = ui.ImageFilter.compose(
-        outer: ui.ImageFilter.blur(
-          sigmaX: recipe.postBlurSigma,
-          sigmaY: recipe.postBlurSigma,
-          tileMode: ui.TileMode.clamp,
-        ),
-        inner: filter,
-      );
-    }
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(
-          sigmaX: blurLogical,
-          sigmaY: blurLogical,
-          tileMode: ui.TileMode.clamp,
-        ),
-        // 最外层仍与页面背景按圆角抗锯齿覆盖率合成，不能直接替换。
-        // src 会在直边与圆弧交界处暴露覆盖率接缝，形成四角缺口/细线。
-        blendMode: BlendMode.srcOver,
-        child: BackdropFilter(
-          filter: filter,
-          // 局部 pass 已有主模糊结果，替换它，避免透明像素重复混合。
-          blendMode: BlendMode.src,
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: widget.shape,
-              color: tint.withValues(alpha: recipe.tintAlphaFor(isDark)),
-            ),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      ),
-    );
+    final radius = radiusLogical.clamp(0.0, size.shortestSide / 2) * dpr;
+    return [
+      dpr,
+      size.width * dpr,
+      size.height * dpr,
+      radiusLogical * dpr,
+      recipe.refractionHeight * dpr,
+      recipe.refractionAmount * dpr,
+      recipe.depthEffect,
+      recipe.chromaticAberration * dpr,
+      highlightAlpha,
+      highlightGray,
+      recipe.noise,
+      recipe.saturation,
+      recipe.brightness,
+      recipe.contrast,
+      superellipse ? 1 : 0,
+      ...glassSuperellipseOctant(size.width * dpr / 2, radius),
+      ...glassSuperellipseOctant(size.height * dpr / 2, radius),
+    ];
   }
 
   /// 降级:均匀模糊 + 色罩 + 实描边。
@@ -593,28 +576,30 @@ class _GlassSurfaceState extends State<GlassSurface> {
         : recipe.fallbackLightAlpha;
     // 描边颜色跟高光灰阶走(白),上浓下淡 —— 模拟迎光面
     final edgeColor = const Color(0xFFFFFFFF).withValues(alpha: edgeAlpha);
-    return BackdropFilter(
-      filter: ui.ImageFilter.blur(
-        sigmaX: blurLogical,
-        sigmaY: blurLogical,
-        tileMode: ui.TileMode.clamp,
-      ),
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shape:
-              widget.drawFallbackBorder && widget.fallbackBorderRadius == null
-              ? _shapeWithSide(
-                  widget.shape,
-                  BorderSide(width: recipe.fallbackEdgeWidth, color: edgeColor),
-                )
-              : widget.shape,
-          // 降级没有折射与边缘光可撑玻璃感,色罩略加厚补偿
-          color: tint.withValues(
-            alpha: (recipe.tintAlphaFor(isDark) + 0.08).clamp(0.0, 1.0),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GlassBackdrop(blurSigma: blurLogical),
+        DecoratedBox(
+          decoration: ShapeDecoration(
+            shape:
+                widget.drawFallbackBorder && widget.fallbackBorderRadius == null
+                ? _shapeWithSide(
+                    widget.shape,
+                    BorderSide(
+                      width: recipe.fallbackEdgeWidth,
+                      color: edgeColor,
+                    ),
+                  )
+                : widget.shape,
+            // 降级没有折射与边缘光可撑玻璃感,色罩略加厚补偿
+            color: tint.withValues(
+              alpha: (recipe.tintAlphaFor(isDark) + 0.08).clamp(0.0, 1.0),
+            ),
           ),
+          child: const SizedBox.expand(),
         ),
-        child: const SizedBox.expand(),
-      ),
+      ],
     );
   }
 }

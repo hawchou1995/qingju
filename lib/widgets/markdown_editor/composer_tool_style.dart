@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:m3e_ui/m3e_ui.dart';
 
 /// 通过填色表达状态，沿用原生圆形反馈，点击区域始终保持 48dp。
@@ -8,7 +9,9 @@ ButtonStyle composerToolButtonStyle(
 }) {
   final colors = Theme.of(context).colorScheme;
   final motion =
-      M3eFlags.of(context).enabled && !MediaQuery.disableAnimationsOf(context);
+      M3eFlags.of(context).enabled &&
+      !(MediaQuery.disableAnimationsOf(context) ||
+          MediaQuery.reduceMotionOf(context));
   return IconButton.styleFrom(
     minimumSize: const Size.square(48),
     maximumSize: const Size.square(48),
@@ -34,11 +37,12 @@ class ComposerEditingControls extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(right: 4),
     child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: .42),
-        borderRadius: BorderRadius.circular(22),
+      decoration: ShapeDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest
+            .withValues(alpha: .42),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(22),
+        ),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     ),

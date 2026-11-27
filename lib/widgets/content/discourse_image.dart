@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:m3e_ui/m3e_ui.dart';
+
 import '../../services/discourse/discourse_service.dart';
 import '../../services/discourse_cache_manager.dart';
+import '../../services/image_decode_spec_memo.dart';
 import '../../pages/image_viewer_page.dart';
 import 'svg_view.dart';
 import '../common/hero_image.dart';
@@ -146,7 +149,7 @@ class _DiscourseImageState extends State<DiscourseImage> {
         heroTag: widget.heroTag!,
         style: _viewerStyle,
         flightImage: _resolvedUrl != null
-            ? discourseImageProvider(_resolvedUrl!)
+            ? ImageDecodeSpecMemo.peek(_resolvedUrl!)
             : null,
         onTap: widget.enableLightbox && !_isSvg ? _openLightbox : null,
         child: imageWidget,
@@ -157,10 +160,7 @@ class _DiscourseImageState extends State<DiscourseImage> {
 
     // Lightbox(无 heroTag:纯点击打开,无飞行)
     if (widget.enableLightbox && !_isSvg) {
-      return GestureDetector(
-        onTap: _openLightbox,
-        child: imageWidget,
-      );
+      return GestureDetector(onTap: _openLightbox, child: imageWidget);
     }
 
     return imageWidget;
@@ -170,7 +170,10 @@ class _DiscourseImageState extends State<DiscourseImage> {
   /// multi_frame_codec 的 #85831 / #94205 bug。
   Widget _buildNativeAnimatedImage(ThemeData theme) {
     return Image(
-      image: discourseImageProvider(_resolvedUrl!),
+      image: ImageDecodeSpecMemo.remember(
+        _resolvedUrl!,
+        discourseImageProvider(_resolvedUrl!),
+      ),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
@@ -197,11 +200,14 @@ class _DiscourseImageState extends State<DiscourseImage> {
         : _kMaxDecodeHeight;
 
     return Image(
-      image: ResizeImage(
-        discourseImageProvider(_resolvedUrl!),
-        width: cacheWidth,
-        height: cacheHeight,
-        policy: ResizeImagePolicy.fit,
+      image: ImageDecodeSpecMemo.remember(
+        _resolvedUrl!,
+        ResizeImage(
+          discourseImageProvider(_resolvedUrl!),
+          width: cacheWidth,
+          height: cacheHeight,
+          policy: ResizeImagePolicy.fit,
+        ),
       ),
       width: widget.width,
       height: widget.height,
@@ -254,9 +260,11 @@ class _DiscourseImageState extends State<DiscourseImage> {
     return Container(
       width: widget.width,
       height: widget.height ?? 100,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(4),
+        ),
       ),
       child: Center(
         child: LoadingSpinner(
@@ -273,9 +281,11 @@ class _DiscourseImageState extends State<DiscourseImage> {
     return Container(
       width: widget.width,
       height: widget.height ?? 60,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(4),
+        ),
       ),
       child: Center(
         child: Icon(
@@ -300,7 +310,9 @@ class _DiscourseImageState extends State<DiscourseImage> {
       _resolvedUrl!,
       heroTag: widget.heroTag,
       thumbnailUrl: _resolvedUrl,
-      galleryImages: widget.galleryImages.isNotEmpty ? widget.galleryImages : null,
+      galleryImages: widget.galleryImages.isNotEmpty
+          ? widget.galleryImages
+          : null,
       initialIndex: widget.initialIndex,
       enableShare: true,
       // 与源端同源:_viewerStyle 一处给出,两侧不可能不一致
@@ -309,5 +321,4 @@ class _DiscourseImageState extends State<DiscourseImage> {
       heroSourceCircular: args.circular,
     );
   }
-
 }

@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
@@ -158,7 +158,7 @@ class _WebViewLoginPageState extends ConsumerState<WebViewLoginPage> {
                 Icon(
                   Symbols.lock_rounded,
                   size: 14,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: context.emphasis.accent,
                 ),
                 const SizedBox(width: 8),
                 Expanded(

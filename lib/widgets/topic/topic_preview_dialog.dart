@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+
 import '../../models/topic.dart';
 import '../../services/topic_preview_preloader.dart';
 import '../../models/category.dart';
@@ -17,11 +19,13 @@ import '../common/morphing_preview_route.dart';
 import '../common/skeleton.dart';
 import '../../utils/number_utils.dart';
 import '../common/emoji_text.dart';
+import '../../utils/emoji_shortcodes.dart';
 import '../common/smart_avatar.dart';
 import '../../utils/fluxdo_render_callbacks.dart';
 import '../../pages/category_topics_page.dart';
 import '../../pages/tag_topics_page.dart';
 import '../../../../../l10n/s.dart';
+import '../../theme/app_colors.dart';
 
 /// 预览弹窗中的操作项
 class PreviewAction {
@@ -207,7 +211,9 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
               ? Material(type: MaterialType.transparency, child: sheetBody)
               : Material(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: context.shapes.borderRadius(20),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   elevation: 8,
                   child: sheetBody,
@@ -265,7 +271,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
             return;
           }
           navigator.push(
-            MaterialPageRoute(
+            InteractionPageRoute(
               builder: (_) => TopicDetailPage(
                 topicId: topicId,
                 initialTitle: topicSlug,
@@ -315,7 +321,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
   }
 
   Widget _buildExcerptFallback(ThemeData theme) {
-    final cleanExcerpt = topic.excerpt!
+    final cleanExcerpt = emojiImagesToShortcodes(topic.excerpt!)
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll('&hellip;', '...')
         .replaceAll('&amp;', '&')
@@ -329,8 +335,9 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
 
     final contentFontScale = ref.watch(preferencesProvider).contentFontScale;
     // 纯文本无色块:预览是轻量一瞥,excerpt 不需要卡片式衬底
-    return Text(
+    return EmojiText(
       cleanExcerpt,
+      inline: true,
       style: theme.textTheme.bodyMedium?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
         height: 1.6,
@@ -376,7 +383,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
                 child: Icon(
                   Symbols.push_pin_rounded,
                   size: 17,
-                  color: theme.colorScheme.primary,
+                  color: context.emphasis.selected,
                 ),
               ),
             ),
@@ -388,7 +395,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
                 child: Icon(
                   Symbols.check_box_rounded,
                   size: 17,
-                  color: Colors.green,
+                  color: context.appColors.green,
                 ),
               ),
             ),
@@ -450,7 +457,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(
+                        InteractionPageRoute(
                           builder: (_) =>
                               CategoryTopicsPage(category: category),
                         ),
@@ -542,7 +549,7 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
-                MaterialPageRoute(
+                InteractionPageRoute(
                   builder: (_) => TagTopicsPage(tagName: tag.name),
                 ),
               );
@@ -633,7 +640,9 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
   Widget _buildCustomActions(BuildContext context, ThemeData theme) {
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(14),
+      shape: RoundedSuperellipseBorder(
+        borderRadius: context.shapes.borderRadius(14),
+      ),
       clipBehavior: Clip.antiAlias,
       elevation: 8,
       child: Column(
@@ -691,21 +700,15 @@ class _TopicPreviewDialogState extends ConsumerState<TopicPreviewDialog> {
     return Container(
       width: 8,
       height: 8,
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: ColorUtils.readableOn(
-          _parseColor(category.color),
+          ColorUtils.category(category.color, Theme.of(context)),
           theme.brightness,
         ),
-        borderRadius: BorderRadius.circular(2),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(2),
+        ),
       ),
     );
-  }
-
-  Color _parseColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      return Color(int.parse('0xFF$hex'));
-    }
-    return Colors.grey;
   }
 }

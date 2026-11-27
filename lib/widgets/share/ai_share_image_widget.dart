@@ -1,9 +1,9 @@
+import 'package:common_ui/common_ui.dart';
 import 'package:ai_model_manager/ai_model_manager.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:jovial_svg/jovial_svg.dart';
 import 'package:markdown/markdown.dart' as md;
+
 import '../../constants.dart';
 import '../../l10n/s.dart';
 import '../../services/emoji_handler.dart';
@@ -123,16 +123,10 @@ class AiShareImageWidget extends StatelessWidget {
   Widget _buildHeader(Color textColor) {
     return Row(
       children: [
-        SizedBox(
+        const SizedBox(
           width: 28,
           height: 28,
-          child: ScalableImageWidget.fromSISource(
-            si: ScalableImageSource.fromSvg(
-              rootBundle,
-              'assets/logo.svg',
-              warnF: (_) {},
-            ),
-          ),
+          child: AppSvgAsset('assets/logo.svg'),
         ),
         const SizedBox(width: 8),
         Text(
@@ -216,9 +210,11 @@ class AiShareImageWidget extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(8),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: context.shapes.borderRadius(8),
+        ),
       ),
       child:
           FluxdoRenderCallbacks.generic(

@@ -2,16 +2,20 @@ import 'dart:async' show unawaited;
 import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:fluxdo_render/fluxdo_render.dart' show ContentTapTarget;
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:m3e_ui/m3e_ui.dart';
+
 import '../../../../services/discourse_cache_manager.dart';
 import '../../../../services/image_decode_spec_memo.dart';
+import '../../../../utils/image_zoom_cursor.dart';
 import '../../../common/hero_image.dart';
 import '../image_utils.dart';
 import 'image_grid_builder.dart';
 
-/// 轮播单页的展示方式:contain 完整展示(圆角属于轨道 ClipRRect,不是单图)。
+/// 轮播单页的展示方式:contain 完整展示(圆角属于轨道 ClipRSuperellipse,不是单图)。
 /// 一处给出,同时约束源端与 openViewer 两侧参数(见 ViewerSourceStyle)。
 const _slideStyle = ViewerSourceStyle.contain();
 
@@ -108,8 +112,9 @@ class _ImageCarouselState extends State<_ImageCarousel> {
     }
 
     // 按距当前页的距离排序，优先解析近的
-    pending.sort((a, b) =>
-        (a - _currentIndex).abs().compareTo((b - _currentIndex).abs()));
+    pending.sort(
+      (a, b) => (a - _currentIndex).abs().compareTo((b - _currentIndex).abs()),
+    );
 
     for (final i in pending) {
       if (!mounted) return;
@@ -132,9 +137,7 @@ class _ImageCarouselState extends State<_ImageCarousel> {
     for (int i = start; i <= end; i++) {
       final url = _resolvedUrls[i];
       if (url != null) {
-        unawaited(
-          BlobImageCache.precache(BlobImageCache.contentBucket, url),
-        );
+        unawaited(BlobImageCache.precache(BlobImageCache.contentBucket, url));
       }
     }
   }
@@ -156,13 +159,18 @@ class _ImageCarouselState extends State<_ImageCarousel> {
     _preloadAdjacent(index);
   }
 
-  void _openViewer(BuildContext context, int imageIndex, String resolvedFullUrl) {
+  void _openViewer(
+    BuildContext context,
+    int imageIndex,
+    String resolvedFullUrl,
+  ) {
     final imageData = widget.images[imageIndex];
     final galleryImages = widget.galleryInfo.images;
     final heroTags = widget.galleryInfo.heroTags;
-    final globalIndex = widget.galleryInfo.findIndex(imageData.src)
-        ?? widget.galleryInfo.findIndex(imageData.fullSrc)
-        ?? -1;
+    final globalIndex =
+        widget.galleryInfo.findIndex(imageData.src) ??
+        widget.galleryInfo.findIndex(imageData.fullSrc) ??
+        -1;
 
     final heroTag = globalIndex >= 0 && globalIndex < heroTags.length
         ? heroTags[globalIndex]
@@ -172,8 +180,9 @@ class _ImageCarouselState extends State<_ImageCarousel> {
         .map((url) => DiscourseImageUtils.getOriginalUrl(url))
         .toList();
     if (globalIndex >= 0 && globalIndex < resolvedGalleryImages.length) {
-      resolvedGalleryImages[globalIndex] =
-          DiscourseImageUtils.getOriginalUrl(resolvedFullUrl);
+      resolvedGalleryImages[globalIndex] = DiscourseImageUtils.getOriginalUrl(
+        resolvedFullUrl,
+      );
     }
 
     DiscourseImageUtils.openViewer(
@@ -202,8 +211,8 @@ class _ImageCarouselState extends State<_ImageCarousel> {
         // 轮播轨道
         SizedBox(
           height: _carouselHeight,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+          child: ClipRSuperellipse(
+            borderRadius: context.shapes.borderRadius(8),
             child: Stack(
               children: [
                 // 背景色
@@ -306,7 +315,12 @@ class _CarouselSlide extends StatefulWidget {
   final GalleryInfo galleryInfo;
   final double carouselHeight;
   final ThemeData theme;
-  final void Function(BuildContext context, int imageIndex, String resolvedFullUrl) onTap;
+  final void Function(
+    BuildContext context,
+    int imageIndex,
+    String resolvedFullUrl,
+  )
+  onTap;
 
   const _CarouselSlide({
     required this.index,
@@ -327,7 +341,6 @@ class _CarouselSlideState extends State<_CarouselSlide>
   @override
   bool get wantKeepAlive => true;
 
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -335,21 +348,19 @@ class _CarouselSlideState extends State<_CarouselSlide>
     final url = widget.resolvedUrl;
     if (url == null) {
       // URL 还在解析中
-      return const Center(
-        child: LoadingSpinner(size: 24),
-      );
+      return const Center(child: LoadingSpinner(size: 24));
     }
 
-    final globalIndex = widget.galleryInfo.findIndex(widget.imageData.src)
-        ?? widget.galleryInfo.findIndex(widget.imageData.fullSrc)
-        ?? -1;
+    final globalIndex =
+        widget.galleryInfo.findIndex(widget.imageData.src) ??
+        widget.galleryInfo.findIndex(widget.imageData.fullSrc) ??
+        -1;
     final heroTags = widget.galleryInfo.heroTags;
     final heroTag = globalIndex >= 0 && globalIndex < heroTags.length
         ? heroTags[globalIndex]
         : 'carousel_${widget.imageData.src.hashCode}';
 
-    // 解码尺寸双向 cap(decode-time ResizeImage,engine 下采样,全格式
-    // 生效)。不要走 CachedNetworkImageProvider 的 maxWidth/maxHeight ——
+    // 解码尺寸双向 cap(decode-time ResizeImage,engine 下采样，支持 Flutter 解码的静态格式)。不要走 CachedNetworkImageProvider 的 maxWidth/maxHeight ——
     // 那是 flutter_cache_manager 的 resize 路径:webp 不在
     // supportedFileNames 里直接原图返回(等于没约束);jpg/png 则解码后
     // PNG 重编码再写第二份磁盘缓存,首次加载反而多付几百 ms。
@@ -357,7 +368,15 @@ class _CarouselSlideState extends State<_CarouselSlide>
     final cacheWidth = (MediaQuery.sizeOf(context).width * dpr).round();
     final cacheHeight = (widget.carouselHeight * dpr).round();
     // 登记解码参数:查看器缩略图占位同参重建 → 同 key 命中缓存
-    ImageDecodeSpecMemo.remember(url, cacheWidth, cacheHeight);
+    final provider = ImageDecodeSpecMemo.remember(
+      url,
+      ResizeImage(
+        discourseImageProvider(url),
+        width: cacheWidth,
+        height: cacheHeight,
+        policy: ResizeImagePolicy.fit,
+      ),
+    );
 
     final aspect = _imageAspect;
 
@@ -372,13 +391,11 @@ class _CarouselSlideState extends State<_CarouselSlide>
       heroTag: heroTag,
       style: _slideStyle,
       aspectRatio: aspect,
-      flightImage: discourseImageProvider(url),
+      flightImage: provider,
       onTap: () => widget.onTap(context, widget.index, url),
-      child: _buildImage(
-        url,
-        cacheWidth,
-        cacheHeight,
-        fillSlot: aspect == null,
+      child: MouseRegion(
+        cursor: imageZoomCursor,
+        child: _buildImage(provider, fillSlot: aspect == null),
       ),
     );
   }
@@ -391,20 +408,9 @@ class _CarouselSlideState extends State<_CarouselSlide>
     return w / h;
   }
 
-
-  Widget _buildImage(
-    String url,
-    int cacheWidth,
-    int cacheHeight, {
-    required bool fillSlot,
-  }) {
+  Widget _buildImage(ImageProvider provider, {required bool fillSlot}) {
     return Image(
-      image: ResizeImage(
-        discourseImageProvider(url),
-        width: cacheWidth,
-        height: cacheHeight,
-        policy: ResizeImagePolicy.fit,
-      ),
+      image: provider,
       // 盒子已由 AspectRatio 收成图片比例,此时 contain 与 fill 等效。
       // 但**必须用 contain**:AspectRatio 用的是 <img> 声明的宽高,而
       // Discourse 那个值偶尔与实际文件不符 —— 用 fill 会拉伸变形,
@@ -443,15 +449,12 @@ class _NavButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
 
-  const _NavButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _NavButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
+    return ContentTapTarget(
       onTap: onTap,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
@@ -459,21 +462,17 @@ class _NavButton extends StatelessWidget {
         child: Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: theme.colorScheme.surface.withValues(alpha: 0.8),
-            shape: BoxShape.circle,
-            boxShadow: [
+            shadows: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
               ),
             ],
+            shape: context.shapes.circle(),
           ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: theme.colorScheme.onSurface,
-          ),
+          child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
         ),
       ),
     );
@@ -500,18 +499,20 @@ class _DotsIndicator extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(count, (index) {
         final isActive = index == currentIndex;
-        return GestureDetector(
+        return ContentTapTarget(
           onTap: () => onTap(index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             margin: const EdgeInsets.symmetric(horizontal: 3),
             width: isActive ? 20.0 : 8.0,
             height: 8.0,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
+            decoration: ShapeDecoration(
               color: isActive
                   ? theme.colorScheme.primary
                   : theme.colorScheme.outlineVariant,
+              shape: RoundedSuperellipseBorder(
+                borderRadius: context.shapes.borderRadius(4),
+              ),
             ),
           ),
         );

@@ -11,6 +11,39 @@ void main() {
       expect(normalizeEmojiShortcodeName('  :smile:  '), 'smile');
     });
 
+    test('展示层按官方规则识别短代码', () {
+      List<String> names(String text, {bool inline = false}) => [
+        for (final m in displayEmojiShortcodeMatches(text, inline: inline))
+          m.group(1)!,
+      ];
+
+      expect(names(':smile:'), ['smile']);
+      expect(names('Hi :smile:!'), ['smile']);
+      expect(names('好的，:smile:'), ['smile']);
+      expect(names(':smile::heart:'), ['smile', 'heart']);
+      expect(names('😀:heart:'), ['heart']);
+      expect(names(':+1:t3: 和 :piñata:'), ['+1:t3', 'piñata']);
+      // 紧贴文字、时间与英文单词里的冒号不转
+      expect(names('谢谢:smile:'), isEmpty);
+      expect(names('12:30:45'), isEmpty);
+      expect(names('a:smile:'), isEmpty);
+      expect(names(':smile:abc'), isEmpty);
+      // 站点开启行内转换后任意位置都转
+      expect(names('谢谢:smile:', inline: true), ['smile']);
+    });
+
+    test('HTML 里的 emoji 图片还原成短代码', () {
+      expect(
+        emojiImagesToShortcodes(
+          '好<img src="/images/emoji/twitter/smile.png?v=16" '
+          'title=":smile:" class="emoji" alt=":smile:" loading="lazy">'
+          "<img class='emoji emoji-custom' alt=':bili_114:'>"
+          '<img src="/uploads/a.png" alt="照片">',
+        ),
+        '好:smile::bili_114:<img src="/uploads/a.png" alt="照片">',
+      );
+    });
+
     test('counts emoji shortcodes as a single visible character', () {
       expect(visibleLengthWithEmojiShortcodes('abc'), 3);
       expect(visibleLengthWithEmojiShortcodes(':smile:'), 1);
@@ -94,10 +127,79 @@ void main() {
     });
 
     test('builds tone emoji urls with discourse path format', () {
+      // 官方 code.replace(/:t/, "/"):`wave:t3` → `wave/3`
       expect(
         EmojiHandler().getEmojiUrl('wave:t3'),
-        endsWith('/images/emoji/twitter/wave/t3.png?v=12'),
+        endsWith('/images/emoji/noto/wave/3.png?v=16'),
       );
+    });
+
+    test('standard emoji urls use the display set', () {
+      expect(
+        EmojiHandler().getEmojiUrl('heart'),
+        endsWith('/images/emoji/noto/heart.png?v=16'),
+      );
+    });
+
+    test('displayUrl rewrites site-set urls and keeps others', () {
+      expect(
+        EmojiHandler.displayUrl(
+          'https://cdn.example.com/images/emoji/twitter/+1/3.png?v=15',
+        ),
+        'https://cdn.example.com/images/emoji/noto/+1/3.png?v=16',
+      );
+      const noto = 'https://cdn.example.com/images/emoji/noto/heart.png?v=16';
+      expect(EmojiHandler.displayUrl(noto), noto);
+      const custom =
+          'https://cdn.example.com/uploads/default/original/1X/abc.gif';
+      expect(EmojiHandler.displayUrl(custom), custom);
+    });
+
+    test('fallbackUrl points display-set urls back to the site set', () {
+      expect(
+        EmojiHandler.fallbackUrl(
+          'https://cdn.example.com/images/emoji/noto/cn.png?v=16',
+        ),
+        'https://cdn.example.com/images/emoji/twitter/cn.png?v=16',
+      );
+      expect(
+        EmojiHandler.fallbackUrl(
+          'https://cdn.example.com/images/emoji/twitter/cn.png?v=16',
+        ),
+        isNull,
+      );
+    });
+
+    test('animatedUrl supports tone variants like the official component', () {
+      expect(
+        EmojiHandler().animatedUrl('heart'),
+        endsWith('/images/emoji/noto_animated/heart.avif?v=16'),
+      );
+      expect(
+        EmojiHandler().animatedUrl('+1:t3'),
+        endsWith('/images/emoji/noto_animated/+1/3.avif?v=16'),
+      );
+    });
+
+    test('emoji style preference switches the display set', () {
+      addTearDown(() => EmojiHandler.setPreference(null));
+
+      EmojiHandler.setPreference('twemoji');
+      expect(
+        EmojiHandler().getEmojiUrl('heart'),
+        endsWith('/images/emoji/twemoji/heart.png?v=16'),
+      );
+      expect(
+        EmojiHandler.displayUrl(
+          'https://cdn.example.com/images/emoji/twitter/heart.png?v=12',
+        ),
+        'https://cdn.example.com/images/emoji/twemoji/heart.png?v=16',
+      );
+      // 动态表情只有 Noto 画风,其他风格不播放
+      expect(EmojiHandler().animatedUrl('heart'), isNull);
+
+      EmojiHandler.setPreference('not_a_set');
+      expect(EmojiHandler.preference, EmojiHandler.defaultPreference);
     });
   });
 }

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 
 import '../../l10n/s.dart';
@@ -119,10 +120,9 @@ class _ToolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final baseColor = active
         ? theme.colorScheme.primaryContainer
-        : (isDark ? Colors.white10 : const Color(0xFFF2F3F5));
+        : theme.colorScheme.surfaceContainerHigh;
     final fg = active
         ? theme.colorScheme.onPrimaryContainer
         : (dimmed
@@ -134,10 +134,14 @@ class _ToolCard extends StatelessWidget {
         height: 80,
         child: Material(
           color: baseColor,
-          borderRadius: BorderRadius.circular(14),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: context.shapes.borderRadius(14),
+          ),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
+            customBorder: RoundedSuperellipseBorder(
+              borderRadius: context.shapes.borderRadius(14),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:fluxdo/utils/avatar_url.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../models/topic.dart';
 import '../../utils/url_helper.dart';
 import '../common/radial_long_press_menu.dart';
@@ -19,7 +20,7 @@ class NestedPostAvatar extends StatefulWidget {
 
   static String resolveUrl(String avatarTemplate) {
     return UrlHelper.resolveUrlWithCdn(
-      avatarTemplate.replaceAll('{size}', '48'),
+      AvatarUrl.resolve(avatarTemplate, size: 48),
     );
   }
 
@@ -65,7 +66,7 @@ class _NestedPostAvatarState extends State<NestedPostAvatar> {
   Widget build(BuildContext context) {
     final imageUrl = widget.avatarTemplate.isNotEmpty
         ? UrlHelper.resolveUrlWithCdn(
-            widget.avatarTemplate.replaceAll('{size}', '48'),
+            AvatarUrl.resolve(widget.avatarTemplate, size: 48),
           )
         : null;
     return RadialLongPressMenu(

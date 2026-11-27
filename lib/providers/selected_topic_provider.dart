@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:common_ui/common_ui.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 // ignore: depend_on_referenced_packages
@@ -430,9 +430,9 @@ final selectedSearchProvider = SelectedTopicProvider((ref) {
   return SelectedTopicNotifier();
 });
 
-/// 追觅（视奸）面板自己的平行视界栈。不能复用首页或搜索栈，否则切换
+/// 关注动态页自己的平行视界栈。不能复用首页或搜索栈，否则切换
 /// 导航项时两个页面会互相继承对方正在查看的话题/资料。
-final selectedSeekingProvider = SelectedTopicProvider((ref) {
+final selectedFollowingFeedProvider = SelectedTopicProvider((ref) {
   return SelectedTopicNotifier();
 });
 
@@ -611,7 +611,7 @@ class EmbeddedStackScope extends InheritedWidget {
       final container = ProviderScope.containerOf(context, listen: false);
       final notifier = container.read(restoreScope.stackProvider.notifier);
       Navigator.of(context).push(
-        MaterialPageRoute(
+        InteractionPageRoute(
           builder: (routeContext) {
             void restoreProfilePane() {
               restoreScope.restoreCurrentPane();
@@ -652,7 +652,7 @@ class EmbeddedStackScope extends InheritedWidget {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => UserProfilePage(username: username)),
+      InteractionPageRoute(builder: (_) => UserProfilePage(username: username)),
     );
   }
 
@@ -671,7 +671,7 @@ class EmbeddedStackScope extends InheritedWidget {
     }
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+    ).push(InteractionPageRoute(builder: (_) => const SettingsPage()));
   }
 }
 

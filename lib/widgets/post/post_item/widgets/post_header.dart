@@ -1,6 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:fluxdo/utils/avatar_url.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../providers/core_providers.dart';
+import '../../../../providers/message_bus/session_channel_providers.dart';
+
 import 'package:app_icons/app_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import '../../../../l10n/s.dart';
 import '../../../../constants.dart';
 import '../../../../models/topic.dart';
@@ -16,6 +24,7 @@ import '../../../user/user_card.dart';
 import '../../whisper_indicator.dart';
 import '../../post_boost/boost_danmaku.dart';
 import 'post_granted_badge.dart';
+import '../../../common/emoji_text.dart';
 
 /// 获取 emoji 图片 URL（未加载完成时返回空字符串，由 errorBuilder 处理）
 String _getEmojiUrl(String emojiName) {
@@ -37,7 +46,7 @@ class _PostAnniversaryIcon extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Image(
-        image: discourseImageProvider(url),
+        image: emojiImageProvider(url),
         width: 14,
         height: 14,
         errorBuilder: (_, _, _) => const SizedBox.shrink(),
@@ -47,7 +56,7 @@ class _PostAnniversaryIcon extends StatelessWidget {
 }
 
 /// 帖子头像组件（独立widget避免不必要的重建）
-class PostAvatar extends StatefulWidget {
+class PostAvatar extends ConsumerStatefulWidget {
   final Post post;
   final ThemeData theme;
   final double radius;
@@ -66,10 +75,10 @@ class PostAvatar extends StatefulWidget {
   });
 
   @override
-  State<PostAvatar> createState() => _PostAvatarState();
+  ConsumerState<PostAvatar> createState() => _PostAvatarState();
 }
 
-class _PostAvatarState extends State<PostAvatar> {
+class _PostAvatarState extends ConsumerState<PostAvatar> {
   final LayerLink _link = LayerLink();
 
   void _openUserCard() {
@@ -95,7 +104,12 @@ class _PostAvatarState extends State<PostAvatar> {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = widget.post.getAvatarUrl();
+    final current = ref.watch(
+      currentUserProvider.select(
+        (value) => value.value?.id == widget.post.userId ? value.value : null,
+      ),
+    );
+    final avatarUrl = current?.getAvatarUrl() ?? widget.post.getAvatarUrl();
     final glowColor = AppConstants.siteCustomization.matchAvatarGlow(
       widget.post,
     );
@@ -104,10 +118,12 @@ class _PostAvatarState extends State<PostAvatar> {
       flairSize: widget.radius * 0.85,
       flairRight: -4,
       flairBottom: -2,
-      flairUrl: widget.post.flairUrl,
-      flairName: widget.post.flairName,
-      flairBgColor: widget.post.flairBgColor,
-      flairColor: widget.post.flairColor,
+      flairUrl: current != null ? current.flairUrl : widget.post.flairUrl,
+      flairName: current != null ? current.flairName : widget.post.flairName,
+      flairBgColor: current != null
+          ? current.flairBgColor
+          : widget.post.flairBgColor,
+      flairColor: current != null ? current.flairColor : widget.post.flairColor,
       avatar: SmartAvatar(
         imageUrl: avatarUrl.isNotEmpty ? avatarUrl : null,
         radius: widget.radius,
@@ -139,7 +155,10 @@ class _PostAvatarState extends State<PostAvatar> {
           imageUrl: avatarUrl.isNotEmpty ? avatarUrl : null,
           radius: rect.shortestSide / 2,
           fallbackText: widget.post.username,
-          border: Border.all(color: Theme.of(ctx).colorScheme.primary, width: 2),
+          border: Border.all(
+            color: Theme.of(ctx).colorScheme.primary,
+            width: 2,
+          ),
         ),
       ),
       child: CompositedTransformTarget(link: _link, child: avatar),
@@ -148,7 +167,7 @@ class _PostAvatarState extends State<PostAvatar> {
 }
 
 /// 帖子头部组件（头像、用户名、时间、徽章）
-class PostHeader extends StatelessWidget {
+class PostHeader extends ConsumerWidget {
   final Post post;
   final int topicId;
   final bool isTopicOwner;
@@ -195,8 +214,11 @@ class PostHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final userStatus = ref.watch(
+      userStatusForProvider((userId: post.userId, initial: post.userStatus)),
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -219,7 +241,7 @@ class PostHeader extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: (post.moderator || post.admin)
-                            ? theme.colorScheme.primary
+                            ? context.emphasis.accent
                             : theme.colorScheme.onSurface,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -232,22 +254,15 @@ class PostHeader extends StatelessWidget {
                     FaIcon(
                       FontAwesomeIcons.shieldHalved,
                       size: 12,
-                      color: theme.colorScheme.primary,
+                      color: context.emphasis.accent,
                     ),
                   ],
                   // 用户状态 emoji
-                  if (post.userStatus?.emoji != null) ...[
+                  if (userStatus != null && userStatus.emoji != null) ...[
                     const SizedBox(width: 4),
                     Tooltip(
-                      message: post.userStatus!.description ?? '',
-                      child: Image(
-                        image: emojiImageProvider(
-                          _getEmojiUrl(post.userStatus!.emoji!),
-                        ),
-                        width: 16,
-                        height: 16,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                      ),
+                      message: userStatus.description ?? '',
+                      child: EmojiImage(userStatus.emoji!, size: 16),
                     ),
                   ],
                   if (isTopicOwner && post.postNumber > 1) ...[
@@ -417,11 +432,13 @@ class PostHeader extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: theme.colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: UiShapes.current.borderRadius(20),
+          side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          ),
         ),
       ),
       child: Row(
@@ -434,12 +451,16 @@ class PostHeader extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           else
-            Icon(Symbols.reply_rounded, size: 14, color: theme.colorScheme.primary),
+            Icon(
+              Symbols.reply_rounded,
+              size: 14,
+              color: UiEmphasis.of(theme).accent,
+            ),
           const SizedBox(width: 6),
           SmartAvatar(
             imageUrl: replyToUser.avatarTemplate.isNotEmpty
                 ? UrlHelper.resolveUrlWithCdn(
-                    replyToUser.avatarTemplate.replaceAll('{size}', '40'),
+                    AvatarUrl.resolve(replyToUser.avatarTemplate, size: 40),
                   )
                 : null,
             radius: 10,

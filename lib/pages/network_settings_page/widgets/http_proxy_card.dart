@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 
 import '../../../l10n/s.dart';
@@ -146,7 +146,6 @@ class _HttpProxyCardInner extends StatelessWidget {
                   leading: const Icon(Symbols.person_rounded),
                   title: Text(context.l10n.httpProxy_auth),
                   subtitle: Text(context.l10n.httpProxy_username(proxySettings.username!)),
-                  dense: true,
                 ),
               Column(
                 children: [

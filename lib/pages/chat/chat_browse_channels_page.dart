@@ -1,6 +1,7 @@
+import 'package:common_ui/common_ui.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:m3e_ui/m3e_ui.dart';
@@ -13,6 +14,7 @@ import '../../services/toast_service.dart';
 import '../../widgets/common/error_view.dart';
 import 'channel/chat_channel_page.dart';
 import 'chat_list_page.dart' show ChatChannelAvatar;
+import '../../widgets/common/emoji_text.dart';
 
 /// 频道浏览器:全部公共频道(含未加入),搜索 + 加入/进入
 class ChatBrowseChannelsPage extends ConsumerStatefulWidget {
@@ -101,7 +103,7 @@ class _ChatBrowseChannelsPageState
   void _open(ChatChannel channel) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ChatChannelPage(channelId: channel.id)),
+      InteractionPageRoute(builder: (_) => ChatChannelPage(channelId: channel.id)),
     );
   }
 
@@ -131,15 +133,15 @@ class _ChatBrowseChannelsPageState
                   alpha: 0.4,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: context.shapes.borderRadius(20),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: context.shapes.borderRadius(20),
                   borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: context.shapes.borderRadius(20),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -202,7 +204,7 @@ class _ChatBrowseChannelsPageState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          EmojiText(
                             channel.title ?? '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -212,7 +214,7 @@ class _ChatBrowseChannelsPageState
                           ),
                           if (channel.description?.isNotEmpty == true) ...[
                             const SizedBox(height: 2),
-                            Text(
+                            EmojiText(
                               channel.description!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,

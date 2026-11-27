@@ -50,6 +50,9 @@ class TopicTocController extends ChangeNotifier {
   /// 点击跳转进行中的目标 id:跳转动画期间 spy 不重算激活项,避免
   /// 高亮沿路径狂闪;落地后恢复。
   String? _jumpTargetId;
+  int _jumpGeneration = 0;
+  // 定位落地后布局还可能再次上报同一位置。正文实际移动前保留点选的章节。
+  double? _headingJumpOffset;
 
   String? _activeHeadingId;
   Set<String> _activeAncestorIds = const {};
@@ -121,6 +124,7 @@ class TopicTocController extends ChangeNotifier {
   }
 
   void _apply(TocData data) {
+    _headingJumpOffset = null;
     _tocData = data;
     _entryById = {for (final e in data.flat) e.id: e};
     // 父链(spy 祖先高亮用)
@@ -145,6 +149,8 @@ class TopicTocController extends ChangeNotifier {
   void debugSetTocData(TocData data) => _apply(data);
 
   void _clear() {
+    _jumpGeneration++;
+    _headingJumpOffset = null;
     _tocData = null;
     _tocSignature = 0;
     _entryById = const {};
@@ -158,17 +164,25 @@ class TopicTocController extends ChangeNotifier {
   /// 点击目录项跳转:先段级粗定位(短帖 null chunk → 整帖段),
   /// 等两帧让标题挂载,再按 reveal 几何精确对齐到视口顶。
   Future<void> scrollToHeading(TocEntry entry, List<Post> posts) async {
+    final generation = ++_jumpGeneration;
+    _headingJumpOffset = null;
+    _spyThrottle?.cancel();
     _jumpTargetId = entry.id;
     _setActive(entry.id);
     try {
-      await detailController.scrollToPostChunk(1, entry.chunkIndex, posts);
+      final positioned = await detailController.scrollToPostChunk(
+        1,
+        entry.chunkIndex,
+        posts,
+      );
+      if (!positioned || generation != _jumpGeneration) return;
       // 等两帧:目标段构建、HeadingAnchorRegistrar 完成注册
       // (同 _scrollToHeroTagSource 的节奏)
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
-      _preciseAlign(entry.anchorKey);
+      if (generation == _jumpGeneration) _preciseAlign(entry.anchorKey);
     } finally {
-      _jumpTargetId = null;
+      if (generation == _jumpGeneration) _jumpTargetId = null;
     }
   }
 
@@ -193,11 +207,14 @@ class TopicTocController extends ChangeNotifier {
       sc.position.minScrollExtent,
       sc.position.maxScrollExtent,
     ));
+    _headingJumpOffset = sc.position.pixels;
   }
 
   /// 页面滚动回调里调用(内部 80ms 节流)。
   void scheduleSpyUpdate() {
-    if (!hasToc) return;
+    // 跳转过程中的滚动通知不能延后到落地再处理，否则相邻标题落在
+    // 阅读缓冲区内时，刚选中的章节会立即失去高亮。
+    if (!hasToc || isJumping) return;
     if (_spyThrottle?.isActive ?? false) return;
     _spyThrottle = Timer(const Duration(milliseconds: 80), () {
       _spyThrottle = null;
@@ -213,7 +230,11 @@ class TopicTocController extends ChangeNotifier {
     final sc = detailController.scrollController;
     if (!sc.hasClients) return;
 
-    final threshold = sc.position.pixels + _topBuffer + _spyBuffer;
+    final pixels = sc.position.pixels;
+    final landed = _headingJumpOffset;
+    if (landed != null && (pixels - landed).abs() <= 0.5) return;
+    _headingJumpOffset = null;
+    final threshold = pixels + _topBuffer + _spyBuffer;
     String? activeId;
     for (final entry in data.flat) {
       final offset = _topAlignOffsetOf(entry.anchorKey);
@@ -256,6 +277,7 @@ class TopicTocController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _jumpGeneration++;
     _spyThrottle?.cancel();
     super.dispose();
   }

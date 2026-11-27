@@ -134,7 +134,7 @@ extension LoadingMethods on TopicDetailNotifier {
           postNumber: lastPostNumber,
           asc: true,
           // 首屏未到末尾时服务端不下发推荐话题,由向下翻页补一次
-          includeSuggested: currentDetail.suggestedTopics.isEmpty,
+          includeSuggested: currentDetail.needsFooterTopics,
         );
 
         final existingIds = currentPosts.map((p) => p.id).toSet();
@@ -166,6 +166,7 @@ extension LoadingMethods on TopicDetailNotifier {
           relatedTopics: newPostStream.relatedTopics.isNotEmpty
               ? newPostStream.relatedTopics
               : null,
+          relatedMessages: newPostStream.relatedMessages,
         ));
       });
       if (!ref.mounted) return;
@@ -284,10 +285,6 @@ extension LoadingMethods on TopicDetailNotifier {
       }
 
       _updateBoundaryState(mergedPosts, mergedStream);
-
-      // 新帖落地会在帖子流末尾长出新内容;用户视口停在其下方(推荐区/
-      // 待审块)时属于"锚上方高度变化",武装哨兵做同帧补偿,避免被推跳
-      AnchorGuardSliver.arm();
 
       state = AsyncValue.data(currentDetail.copyWith(
         postStream: PostStream(

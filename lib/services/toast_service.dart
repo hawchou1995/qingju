@@ -4,7 +4,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:app_icons/app_icons.dart';
 import 'package:common_ui/common_ui.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:m3e_ui/m3e_ui.dart';
 
@@ -138,8 +138,7 @@ class DownloadToastHandle {
   final _ToastSession? _session;
   bool _finished = false;
 
-  bool get isActive =>
-      !_finished && _session != null && !_session.isClosed;
+  bool get isActive => !_finished && _session != null && !_session.isClosed;
 
   /// 更新下载进度（0.0~1.0，-1 为不确定进度）
   void updateProgress(double value) {
@@ -416,21 +415,33 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
   );
   static final _settleScale = TweenSequence<double>([
     TweenSequenceItem(
-      tween: Tween(begin: 0.86, end: 1.1).chain(CurveTween(curve: Curves.easeOut)),
+      tween: Tween(
+        begin: 0.86,
+        end: 1.1,
+      ).chain(CurveTween(curve: Curves.easeOut)),
       weight: 60,
     ),
     TweenSequenceItem(
-      tween: Tween(begin: 1.1, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)),
+      tween: Tween(
+        begin: 1.1,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
       weight: 40,
     ),
   ]);
   static final _settleTilt = TweenSequence<double>([
     TweenSequenceItem(
-      tween: Tween(begin: -0.14, end: 0.07).chain(CurveTween(curve: Curves.easeOut)),
+      tween: Tween(
+        begin: -0.14,
+        end: 0.07,
+      ).chain(CurveTween(curve: Curves.easeOut)),
       weight: 60,
     ),
     TweenSequenceItem(
-      tween: Tween(begin: 0.07, end: 0.0).chain(CurveTween(curve: Curves.easeInOut)),
+      tween: Tween(
+        begin: 0.07,
+        end: 0.0,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
       weight: 40,
     ),
   ]);
@@ -438,11 +449,17 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
   // 同一件事重复触发：徽章弹一下，不做整条胶囊的形变
   static final _pulseScale = TweenSequence<double>([
     TweenSequenceItem(
-      tween: Tween(begin: 1.0, end: 1.12).chain(CurveTween(curve: Curves.easeOut)),
+      tween: Tween(
+        begin: 1.0,
+        end: 1.12,
+      ).chain(CurveTween(curve: Curves.easeOut)),
       weight: 45,
     ),
     TweenSequenceItem(
-      tween: Tween(begin: 1.12, end: 1.0).chain(CurveTween(curve: Curves.easeInOut)),
+      tween: Tween(
+        begin: 1.12,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
       weight: 55,
     ),
   ]);
@@ -499,7 +516,8 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
   void _onPulse() {
     if (!mounted) return;
     final expressive =
-        !MediaQuery.disableAnimationsOf(context) &&
+        !(MediaQuery.disableAnimationsOf(context) ||
+            MediaQuery.reduceMotionOf(context)) &&
         M3eFlags.of(context).enabled;
     if (expressive) _pulse.forward(from: 0);
   }
@@ -569,7 +587,9 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     // 减弱动效：只保留淡入淡出；M3E 关闭：保留位移，去掉形变与回弹
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final reduceMotion =
+        (MediaQuery.disableAnimationsOf(context) ||
+        MediaQuery.reduceMotionOf(context));
     final expressive = !reduceMotion && M3eFlags.of(context).enabled;
     final data = widget.session.data.value;
     final t = _enter.value;
@@ -594,8 +614,8 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
             child: DecoratedBox(
               // 浮在正文之上需要比导航更明显的落影
               decoration: ShapeDecoration(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(_radius),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: context.shapes.borderRadius(_radius),
                 ),
                 shadows: [
                   BoxShadow(
@@ -738,7 +758,9 @@ class _ToastViewState extends State<_ToastView> with TickerProviderStateMixin {
                   minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: const StadiumBorder(),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.all(context.shapes.radius(9999)),
+                  ),
                   textStyle: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -918,7 +940,9 @@ class _StackSlot extends StatelessWidget {
       valueListenable: ToastService._progressOnTop,
       builder: (context, shown, child) => TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: shown ? _slotHeight : 0),
-        duration: MediaQuery.disableAnimationsOf(context)
+        duration:
+            (MediaQuery.disableAnimationsOf(context) ||
+                MediaQuery.reduceMotionOf(context))
             ? Duration.zero
             : const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
@@ -991,10 +1015,7 @@ class _CheckmarkPainter extends CustomPainter {
   final double progress;
   final Color color;
 
-  _CheckmarkPainter({
-    required this.progress,
-    required this.color,
-  });
+  _CheckmarkPainter({required this.progress, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1030,8 +1051,7 @@ class _CheckmarkPainter extends CustomPainter {
       path.lineTo(mid.dx, mid.dy);
       // Draw second segment (the long tail upwards)
       final remainingLength = currentLength - pathLength1;
-      final currentEnd =
-          Offset.lerp(mid, end, remainingLength / pathLength2)!;
+      final currentEnd = Offset.lerp(mid, end, remainingLength / pathLength2)!;
       path.lineTo(currentEnd.dx, currentEnd.dy);
     }
 

@@ -1,37 +1,43 @@
-import 'dart:ui' as ui;
 
 import 'package:common_ui/common_ui.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('自动按后端能力选择，基础不折射，关闭和高对比度优先', () {
+  test('关闭和高对比度优先，用户明确的档位优先于主题，主题只决定自动档', () {
     for (final level in GlassEffectLevel.values) {
       for (final enabled in [false, true]) {
         for (final supported in [false, true]) {
           for (final highContrast in [false, true]) {
-            final settings = GlassSettings(enabled: enabled, level: level);
-            expect(
-              settings.allowsBlur(highContrast: highContrast),
-              enabled && !highContrast,
-            );
-            expect(
-              settings.allowsOptics(
-                shaderSupported: supported,
-                highContrast: highContrast,
-              ),
-              enabled &&
-                  !highContrast &&
-                  supported &&
-                  level != GlassEffectLevel.basic,
-            );
-            expect(
-              settings.allowsBlur(
-                highContrast: highContrast,
-                locallyEnabled: false,
-              ),
-              isFalse,
-            );
+            for (final autoOptics in [false, true]) {
+              final settings = GlassSettings(
+                enabled: enabled,
+                level: level,
+                autoOptics: autoOptics,
+              );
+              expect(
+                settings.allowsBlur(highContrast: highContrast),
+                enabled && !highContrast,
+              );
+              expect(
+                settings.allowsOptics(
+                  shaderSupported: supported,
+                  highContrast: highContrast,
+                ),
+                enabled &&
+                    !highContrast &&
+                    supported &&
+                    (level == GlassEffectLevel.full ||
+                        level == GlassEffectLevel.auto && autoOptics),
+              );
+              expect(
+                settings.allowsBlur(
+                  highContrast: highContrast,
+                  locallyEnabled: false,
+                ),
+                isFalse,
+              );
+            }
           }
         }
       }
@@ -54,7 +60,7 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(GlassBackdrop), findsNothing);
     final box = tester.widget<DecoratedBox>(
       find
           .descendant(
@@ -95,10 +101,10 @@ void main() {
         });
         await tester.pump();
         final optics = settings.allowsOptics(
-          shaderSupported: ui.ImageFilter.isShaderFilterSupported,
+          shaderSupported: GlassSurface.opticalEdgeAvailable,
           highContrast: highContrast,
         );
-        if (!optics || find.byType(BackdropFilter).evaluate().length == 2) {
+        if (!optics || _optical().evaluate().length == 1) {
           break;
         }
       }
@@ -106,28 +112,19 @@ void main() {
     }
 
     await pump(const GlassSettings(level: GlassEffectLevel.basic));
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(GlassBackdrop), findsOneWidget);
+    expect(_optical(), findsNothing);
     expect(mounts, 1);
     await pump(const GlassSettings(level: GlassEffectLevel.full));
-    expect(
-      find.byType(BackdropFilter),
-      ui.ImageFilter.isShaderFilterSupported
-          ? findsNWidgets(2)
-          : findsOneWidget,
-    );
+    expect(_optical(), findsOneWidget);
     await pump(
       const GlassSettings(enabled: false, level: GlassEffectLevel.full),
     );
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(GlassBackdrop), findsNothing);
     await pump(const GlassSettings(), highContrast: true);
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(GlassBackdrop), findsNothing);
     await pump(const GlassSettings());
-    expect(
-      find.byType(BackdropFilter),
-      ui.ImageFilter.isShaderFilterSupported
-          ? findsNWidgets(2)
-          : findsOneWidget,
-    );
+    expect(_optical(), findsOneWidget);
     expect(mounts, 1);
     expect(tester.takeException(), isNull);
   });
@@ -150,3 +147,8 @@ class _ProbeState extends State<_Probe> {
   @override
   Widget build(BuildContext context) => const SizedBox(width: 240, height: 100);
 }
+
+/// 走光学材质（带折射 shader）的玻璃背景
+Finder _optical() => find.byWidgetPredicate(
+  (widget) => widget is GlassBackdrop && widget.program != null,
+);

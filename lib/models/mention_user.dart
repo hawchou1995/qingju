@@ -1,3 +1,4 @@
+import 'package:fluxdo/utils/avatar_url.dart';
 import '../utils/url_helper.dart';
 
 /// 从文本中提取所有 @用户名
@@ -17,12 +18,14 @@ List<String> extractMentionNames(String text) {
 
 /// 用户提及搜索结果中的用户
 class MentionUser {
+  final int? id;
   final String username;
   final String? name;
   final String? avatarTemplate;
   final int? priorityGroup;
 
   const MentionUser({
+    this.id,
     required this.username,
     this.name,
     this.avatarTemplate,
@@ -31,6 +34,7 @@ class MentionUser {
 
   factory MentionUser.fromJson(Map<String, dynamic> json) {
     return MentionUser(
+      id: json['id'] as int?,
       username: json['username'] as String,
       name: json['name'] as String?,
       avatarTemplate: json['avatar_template'] as String?,
@@ -41,7 +45,7 @@ class MentionUser {
   /// 获取头像 URL（根据尺寸替换模板）
   String? getAvatarUrl(String baseUrl, {int size = 40}) {
     if (avatarTemplate == null) return null;
-    final url = avatarTemplate!.replaceAll('{size}', size.toString());
+    final url = AvatarUrl.resolve(avatarTemplate!, size: size);
     return UrlHelper.resolveUrlWithCdn(url);
   }
 }

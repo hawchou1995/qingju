@@ -1,17 +1,21 @@
 import 'package:flutter/foundation.dart' hide Category;
 import '../drafts_signal.dart';
-import 'package:flutter/material.dart' hide Badge;
+import 'package:material_ui/material_ui.dart' hide Badge;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../models/topic.dart';
+import '../../models/topic_post_excerpt.dart';
 import '../../models/assignment.dart';
 import '../../models/nested_topic.dart';
 import '../../models/topic_vote.dart';
 import '../../models/shared_issue.dart';
 import '../../models/user.dart';
+import '../../models/user_group.dart';
+import '../../models/forum_preferences.dart';
 import '../../models/user_action.dart';
+import '../../models/following_feed.dart';
 import '../../models/notification.dart';
 import '../../models/category.dart';
 import '../../models/search_result.dart';
@@ -67,6 +71,8 @@ part '_login.dart';
 part '_topics.dart';
 part '_posts.dart';
 part '_users.dart';
+part '_groups.dart';
+part '_preferences.dart';
 part '_search.dart';
 part '_notifications.dart';
 part '_uploads.dart';
@@ -134,6 +140,8 @@ class DiscourseService extends _DiscourseServiceBase
         _TopicsMixin,
         _PostsMixin,
         _UsersMixin,
+        _GroupsMixin,
+        _ForumPreferencesMixin,
         _SearchMixin,
         _NotificationsMixin,
         _UploadsMixin,

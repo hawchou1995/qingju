@@ -3,9 +3,8 @@ import 'dart:io' as io;
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluxdo/l10n/s.dart';
 import 'package:fluxdo/services/cf_challenge_service.dart';
@@ -48,11 +47,7 @@ void main() {
         TranslationProvider(
           child: MaterialApp(
             navigatorKey: navigatorKey,
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
             supportedLocales: AppLocaleUtils.supportedLocales,
             home: const Scaffold(body: SizedBox.shrink()),
           ),
@@ -89,7 +84,8 @@ void main() {
       for (var i = 0; i < 20 && platform.webView == null; i++) {
         await tester.pump(const Duration(milliseconds: 10));
       }
-      expect(platform.webView, isNotNull);
+      expect(platform.webView, isNotNull,
+        reason: 'requests=${adapter.requests}, completed=$completed, failure=$failure');
       platform.webView!.params.onWebViewCreated!(platform.controller.wrapped);
       Completer<Cookie?>? pendingValue;
       if (delayedSnapshot) {

@@ -1,6 +1,7 @@
 /// MessageBus 相关数据模型
 library;
 
+import 'package:fluxdo/utils/avatar_url.dart';
 import '../../utils/url_helper.dart';
 
 /// 正在输入的用户信息
@@ -16,7 +17,7 @@ class TypingUser {
   });
 
   String getAvatarUrl({int size = 40}) {
-    final template = avatarTemplate.replaceAll('{size}', '$size');
+    final template = AvatarUrl.resolve(avatarTemplate, size: size);
     return UrlHelper.resolveUrlWithCdn(template);
   }
 
@@ -203,21 +204,32 @@ class NotificationCountState {
   final int unread;
   final int highPriority;
 
+  /// 按通知类型 id 分组的未读数，用于通知面板各分类的角标
+  final Map<int, int> grouped;
+
   const NotificationCountState({
     this.allUnread = 0,
     this.unread = 0,
     this.highPriority = 0,
+    this.grouped = const {},
   });
-  
+
+  /// 包含已看过但尚未点开的通知；旧站点缺少分类统计时使用新通知数。
+  int get totalUnread => grouped.isEmpty
+      ? allUnread
+      : grouped.values.fold(0, (sum, count) => sum + count);
+
   NotificationCountState copyWith({
     int? allUnread,
     int? unread,
     int? highPriority,
+    Map<int, int>? grouped,
   }) {
     return NotificationCountState(
       allUnread: allUnread ?? this.allUnread,
       unread: unread ?? this.unread,
       highPriority: highPriority ?? this.highPriority,
+      grouped: grouped ?? this.grouped,
     );
   }
 }

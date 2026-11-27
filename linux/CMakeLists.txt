@@ -144,8 +144,12 @@ set(FLUTTER_ASSET_DIR_NAME "flutter_assets")
 install(CODE "
   file(REMOVE_RECURSE \"${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}\")
   " COMPONENT Runtime)
+# 依赖包里只供 Web 端加载的资源（wasm 解码器、web worker、hls.js 等）也会被
+# 打进原生包。剔除 flutter_assets/packages/<包>/ 下名为 web 的目录；
+# Android 见 android/app/build.gradle.kts，iOS/macOS 见 scripts/strip_web_assets.sh。
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
-  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime
+  REGEX "/${FLUTTER_ASSET_DIR_NAME}/packages/[^/]+/(.+/)?web$" EXCLUDE)
 
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -177,6 +181,9 @@ if(NOT EXISTS "${FFMPEG_CACHE_BIN}")
     "${FFMPEG_CACHE_BIN}.part"
     SHOW_PROGRESS
     TLS_VERIFY ON
+    # 可选下载不能无限阻塞开发构建；失败后使用下方系统 ffmpeg 回退。
+    TIMEOUT 120
+    INACTIVITY_TIMEOUT 20
     STATUS FFMPEG_DL_STATUS)
   list(GET FFMPEG_DL_STATUS 0 FFMPEG_DL_CODE)
   if(NOT FFMPEG_DL_CODE EQUAL 0)

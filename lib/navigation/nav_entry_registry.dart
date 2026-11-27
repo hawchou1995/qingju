@@ -1,16 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/s.dart';
 import '../models/user.dart';
+import '../modules/mini_apps/mini_app_gallery_page.dart';
 import '../pages/bookmarks_page.dart';
 import '../pages/browsing_history_page.dart';
 import '../pages/chat/chat_list_page.dart';
 import '../pages/drafts_page.dart';
 import '../pages/private_messages_page.dart';
 import '../pages/profile_page.dart';
-import '../pages/seeking_page.dart';
+import '../pages/following_feed_page.dart';
 import '../pages/topics_screen.dart';
 import '../providers/discourse_providers.dart';
 import '../providers/chat/chat_channels_provider.dart';
@@ -38,6 +39,15 @@ class NavEntryRegistry {
         pageBuilder: (ctx, isActive) => TopicsScreen(isActive: isActive),
         locked: true,
         defaultInBottomNav: true,
+      ),
+      NavEntry(
+        id: NavEntryIds.miniApps,
+        kind: NavEntryKind.page,
+        iconData: Symbols.apps_rounded,
+        selectedIconData: Symbols.apps_rounded,
+        label: (ctx) => ctx.l10n.miniApp_title,
+        pageBuilder: (ctx, isActive) =>
+            MiniAppGalleryPage(active: isActive, workspace: true),
       ),
       NavEntry(
         id: NavEntryIds.profile,
@@ -69,8 +79,7 @@ class NavEntryRegistry {
         iconData: Symbols.history_rounded,
         selectedIconData: Symbols.history_rounded,
         label: (ctx) => ctx.l10n.nav_history,
-        pageBuilder: (ctx, isActive) =>
-            BrowsingHistoryPage(isActive: isActive),
+        pageBuilder: (ctx, isActive) => BrowsingHistoryPage(isActive: isActive),
         requiresLogin: true,
       ),
       NavEntry(
@@ -88,8 +97,7 @@ class NavEntryRegistry {
         iconData: Symbols.mail_rounded,
         selectedIconData: Symbols.mail_rounded,
         label: (ctx) => ctx.l10n.nav_messages,
-        pageBuilder: (ctx, isActive) =>
-            PrivateMessagesPage(isActive: isActive),
+        pageBuilder: (ctx, isActive) => PrivateMessagesPage(isActive: isActive),
         requiresLogin: true,
       ),
       NavEntry(
@@ -106,12 +114,12 @@ class NavEntryRegistry {
         customSelectedIconBuilder: (ctx, ref) => _chatIcon(ref, selected: true),
       ),
       NavEntry(
-        id: NavEntryIds.seeking,
+        id: NavEntryIds.followingFeed,
         kind: NavEntryKind.page,
-        iconData: Symbols.visibility_rounded,
-        selectedIconData: Symbols.visibility_rounded,
-        label: (ctx) => ctx.l10n.seeking_title,
-        pageBuilder: (ctx, isActive) => SeekingPage(isActive: isActive),
+        iconData: Symbols.rss_feed_rounded,
+        selectedIconData: Symbols.rss_feed_rounded,
+        label: (ctx) => ctx.l10n.followingFeed_title,
+        pageBuilder: (ctx, isActive) => FollowingFeedPage(isActive: isActive),
         requiresLogin: true,
       ),
       NavEntry(
@@ -152,16 +160,23 @@ class NavEntryRegistry {
   static List<String> lockedIds() {
     return buildAll().where((e) => e.locked).map((e) => e.id).toList();
   }
+
+  /// 桌面固定首页和广场，其余沿用用户导航配置，不回写移动端底栏偏好。
+  static List<NavEntry> desktopEntries(List<NavEntry> entries) => [
+    byId(NavEntryIds.home)!,
+    byId(NavEntryIds.miniApps)!,
+    ...entries.where(
+      (entry) =>
+          entry.id != NavEntryIds.home && entry.id != NavEntryIds.miniApps,
+    ),
+  ];
 }
 
 Widget _chatIcon(WidgetRef ref, {required bool selected}) {
   final unread = ref.watch(chatTotalUnreadProvider);
   final icon = Icon(Symbols.forum_rounded, fill: selected ? 1 : 0);
   if (unread <= 0) return icon;
-  return Badge(
-    label: Text(unread > 99 ? '99+' : '$unread'),
-    child: icon,
-  );
+  return Badge(label: Text(unread > 99 ? '99+' : '$unread'), child: icon);
 }
 
 Widget _profileIcon(

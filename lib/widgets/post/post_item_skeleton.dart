@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:common_ui/common_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import '../common/skeleton.dart';
 
 /// 帖子骨架屏
@@ -83,7 +84,10 @@ class TopicDetailHeaderSkeleton extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: PageBackgroundScope.contentColor(
+          context,
+          theme.colorScheme.surface,
+        ),
         border: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
