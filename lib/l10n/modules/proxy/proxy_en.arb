@@ -43,7 +43,7 @@
   "httpProxy_ssLink": "Shadowsocks Link",
   "httpProxy_suppressedByVpn": "Auto-disabled by VPN, will restore when VPN disconnects",
   "httpProxy_testAvailability": "Test Proxy Availability",
-  "httpProxy_testingProxy": "Verifying access to linux.do via current proxy",
+  "httpProxy_testingProxy": "Verifying access to Qingju via current proxy",
   "httpProxy_testingSsConfig": "Verifying the Shadowsocks config can be handled by the network core",
   "httpProxy_title": "Upstream Proxy",
   "httpProxy_username": "Username: {username}",
