@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:common_ui/common_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:app_icons/app_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -266,13 +267,13 @@ class _PreheatFailed extends StatelessWidget {
   void _openAbout(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const AboutPage()));
+    ).push(InteractionPageRoute(builder: (_) => const AboutPage()));
   }
 
   void _openNetworkSettings(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const NetworkSettingsPage()));
+    ).push(InteractionPageRoute(builder: (_) => const NetworkSettingsPage()));
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
