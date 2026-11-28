@@ -157,7 +157,7 @@ void main() {
       for (final style in ['classic', 'modern']) {
         final text = readSplash(night, style);
         final fills = _fillPaths(text).keys.toSet();
-        expect(fills, brandFills.toSet(), reason: 'values$night 的 $style 配色应保持青橘");
+        expect(fills, brandFills.toSet(), reason: 'values$night 的 $style 配色应保持青橘');
         // 果身是标志主体轮廓，必须在启动屏底色上可辨认；旧版纯色标志
         // （#F0F0F0 / #F0F0F3）在浅色底上对比只有 1.08，等于看不见。
         expect(
