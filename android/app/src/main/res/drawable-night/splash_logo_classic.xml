@@ -12,47 +12,47 @@
             <group
                 android:translateX="90"
                 android:translateY="90"
-                android:scaleX="0.10546875"
-                android:scaleY="0.10546875">
+                android:scaleX="1.00000000"
+                android:scaleY="1.00000000">
                 <path
                     android:name="circle_fill"
-                    android:fillColor="#F0F0F0"
+                    android:fillColor="#F8AD38"
                     android:fillAlpha="0"
-                    android:pathData="M512,64 A448,448,0,1,1,512,960 A448,448,0,1,1,512,64 Z" />
+                    android:pathData="M54,30 A28,28,0,1,0,54.1,30 Z" />
                 <path
-                    android:name="top_fill"
-                    android:fillColor="#1C1C1E"
+                    android:name="leaf_fill"
+                    android:fillColor="#A4CE72"
                     android:fillAlpha="0"
-                    android:pathData="M135.3,324 L888.7,324 A421,421,0,0,0,135.3,324 Z" />
+                    android:pathData="M52,32 C53.3333,18.6667,62,14.6667,78,20 C75.3333,30.6667,66.6667,34.6667,52,32 Z" />
                 <path
-                    android:name="bottom_fill"
-                    android:fillColor="#FFB003"
+                    android:name="inner_fill"
+                    android:fillColor="#FFD475"
                     android:fillAlpha="0"
-                    android:pathData="M135.3,700 L888.7,700 A421,421,0,0,1,135.3,700 Z" />
+                    android:pathData="M54,37 A21,21,0,1,0,54.1,37 Z" />
                 <path
                     android:name="circle_stroke"
                     android:strokeColor="#F0F0F3"
-                    android:strokeWidth="23.7037"
+                    android:strokeWidth="2.5"
                     android:strokeLineCap="round"
                     android:strokeLineJoin="round"
                     android:trimPathEnd="0"
-                    android:pathData="M512,64 A448,448,0,1,1,512,960 A448,448,0,1,1,512,64 Z" />
+                    android:pathData="M54,30 A28,28,0,1,0,54.1,30 Z" />
                 <path
-                    android:name="top_stroke"
+                    android:name="leaf_stroke"
                     android:strokeColor="#F0F0F3"
-                    android:strokeWidth="23.7037"
+                    android:strokeWidth="2.5"
                     android:strokeLineCap="round"
                     android:strokeLineJoin="round"
                     android:trimPathEnd="0"
-                    android:pathData="M135.3,324 L888.7,324" />
+                    android:pathData="M52,32 C53.3333,18.6667,62,14.6667,78,20 C75.3333,30.6667,66.6667,34.6667,52,32" />
                 <path
-                    android:name="middle_stroke"
+                    android:name="inner_stroke"
                     android:strokeColor="#F0F0F3"
-                    android:strokeWidth="23.7037"
+                    android:strokeWidth="2.5"
                     android:strokeLineCap="round"
                     android:strokeLineJoin="round"
                     android:trimPathEnd="0"
-                    android:pathData="M135.3,700 L888.7,700" />
+                    android:pathData="M54,37 A21,21,0,1,0,54.1,37 Z" />
             </group>
         </vector>
     </aapt:attr>
@@ -68,7 +68,7 @@
                 android:interpolator="@interpolator/splash_motion_fill" />
         </aapt:attr>
     </target>
-    <target android:name="top_fill">
+    <target android:name="leaf_fill">
         <aapt:attr name="android:animation">
             <objectAnimator
                 android:propertyName="fillAlpha"
@@ -80,7 +80,7 @@
                 android:interpolator="@interpolator/splash_motion_fill" />
         </aapt:attr>
     </target>
-    <target android:name="bottom_fill">
+    <target android:name="inner_fill">
         <aapt:attr name="android:animation">
             <objectAnimator
                 android:propertyName="fillAlpha"
@@ -114,7 +114,7 @@
             </set>
         </aapt:attr>
     </target>
-    <target android:name="top_stroke">
+    <target android:name="leaf_stroke">
         <aapt:attr name="android:animation">
             <set>
                 <objectAnimator
@@ -136,7 +136,7 @@
             </set>
         </aapt:attr>
     </target>
-    <target android:name="middle_stroke">
+    <target android:name="inner_stroke">
         <aapt:attr name="android:animation">
             <set>
                 <objectAnimator

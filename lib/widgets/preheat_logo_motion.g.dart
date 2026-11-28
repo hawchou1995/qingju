@@ -32,138 +32,112 @@ const Color logoMotionStrokeLight = Color(0xFF1C1C1E);
 const Color logoMotionStrokeDark = Color(0xFFF0F0F3);
 
 final LogoMotionSpec classicLogoMotion = LogoMotionSpec(
-  viewBox: const Rect.fromLTWH(0, 0, 1024, 1024),
-  bodyCenter: const Offset(512, 512),
-  bodyRadius: 448.0,
+  viewBox: const Rect.fromLTWH(0, 0, 108, 108),
+  bodyCenter: const Offset(54, 58),
+  bodyRadius: 28.0,
   shapes: [
     LogoMotionShape(
       id: 'circle',
       isBody: true,
       fillPath: Path()
-        ..moveTo(512, 64)
+        ..moveTo(54, 30)
         ..arcToPoint(
-          const Offset(512, 960),
-          radius: const Radius.circular(448),
+          const Offset(54.1, 30),
+          radius: const Radius.circular(28),
           largeArc: true,
-          clockwise: true,
-        )
-        ..arcToPoint(
-          const Offset(512, 64),
-          radius: const Radius.circular(448),
-          largeArc: true,
-          clockwise: true,
+          clockwise: false,
         )
         ..close(),
-      fillLight: const Color(0xFFF0F0F0),
-      fillDark: const Color(0xFFF0F0F0),
+      fillLight: const Color(0xFFF8AD38),
+      fillDark: const Color(0xFFF8AD38),
       fillStart: 0.45,
       fillEnd: 0.66,
       strokePath: Path()
-        ..moveTo(512, 64)
+        ..moveTo(54, 30)
         ..arcToPoint(
-          const Offset(512, 960),
-          radius: const Radius.circular(448),
+          const Offset(54.1, 30),
+          radius: const Radius.circular(28),
           largeArc: true,
-          clockwise: true,
-        )
-        ..arcToPoint(
-          const Offset(512, 64),
-          radius: const Radius.circular(448),
-          largeArc: true,
-          clockwise: true,
+          clockwise: false,
         )
         ..close(),
       strokeStart: 0.0,
       strokeEnd: 0.45,
     ),
     LogoMotionShape(
-      id: 'top',
+      id: 'leaf',
       fillPath: Path()
-        ..moveTo(135.3, 324)
-        ..lineTo(888.7, 324)
-        ..arcToPoint(
-          const Offset(135.3, 324),
-          radius: const Radius.circular(421),
-          largeArc: false,
-          clockwise: false,
-        )
+        ..moveTo(52, 32)
+        ..cubicTo(53.3333, 18.6667, 62, 14.6667, 78, 20)
+        ..cubicTo(75.3333, 30.6667, 66.6667, 34.6667, 52, 32)
         ..close(),
-      fillLight: const Color(0xFF1C1C1E),
-      fillDark: const Color(0xFF1C1C1E),
+      fillLight: const Color(0xFFA4CE72),
+      fillDark: const Color(0xFFA4CE72),
       fillStart: 0.52,
       fillEnd: 0.72,
       strokePath: Path()
-        ..moveTo(135.3, 324)
-        ..lineTo(888.7, 324),
+        ..moveTo(52, 32)
+        ..cubicTo(53.3333, 18.6667, 62, 14.6667, 78, 20)
+        ..cubicTo(75.3333, 30.6667, 66.6667, 34.6667, 52, 32),
       strokeStart: 0.2,
       strokeEnd: 0.42,
     ),
     LogoMotionShape(
-      id: 'middle',
-      strokePath: Path()
-        ..moveTo(135.3, 700)
-        ..lineTo(888.7, 700),
-      strokeStart: 0.3,
-      strokeEnd: 0.52,
-    ),
-    LogoMotionShape(
-      id: 'bottom',
+      id: 'inner',
       fillPath: Path()
-        ..moveTo(135.3, 700)
-        ..lineTo(888.7, 700)
+        ..moveTo(54, 37)
         ..arcToPoint(
-          const Offset(135.3, 700),
-          radius: const Radius.circular(421),
-          largeArc: false,
-          clockwise: true,
+          const Offset(54.1, 37),
+          radius: const Radius.circular(21),
+          largeArc: true,
+          clockwise: false,
         )
         ..close(),
-      fillLight: const Color(0xFFFFB003),
-      fillDark: const Color(0xFFFFB003),
+      fillLight: const Color(0xFFFFD475),
+      fillDark: const Color(0xFFFFD475),
       fillStart: 0.64,
       fillEnd: 0.84,
+      strokePath: Path()
+        ..moveTo(54, 37)
+        ..arcToPoint(
+          const Offset(54.1, 37),
+          radius: const Radius.circular(21),
+          largeArc: true,
+          clockwise: false,
+        )
+        ..close(),
+      strokeStart: 0.3,
+      strokeEnd: 0.52,
     ),
   ],
 );
 
 final LogoMotionSpec modernLogoMotion = LogoMotionSpec(
-  viewBox: const Rect.fromLTWH(-158, -158, 1890, 1890),
-  bodyCenter: const Offset(787, 787),
-  bodyRadius: 787.0,
+  viewBox: const Rect.fromLTWH(0, 0, 108, 108),
+  bodyCenter: const Offset(54, 58),
+  bodyRadius: 28.0,
   shapes: [
     LogoMotionShape(
       id: 'circle',
       isBody: true,
       fillPath: Path()
-        ..moveTo(787, 0)
+        ..moveTo(54, 30)
         ..arcToPoint(
-          const Offset(787, 1574),
-          radius: const Radius.circular(787),
-          largeArc: true,
-          clockwise: false,
-        )
-        ..arcToPoint(
-          const Offset(787, 0),
-          radius: const Radius.circular(787),
+          const Offset(54.1, 30),
+          radius: const Radius.circular(28),
           largeArc: true,
           clockwise: false,
         )
         ..close(),
-      fillLight: const Color(0xFFF0F0F3),
-      fillDark: const Color(0xFF1C1C1E),
-      fillStart: 0.48,
-      fillEnd: 0.68,
+      fillLight: const Color(0xFFF8AD38),
+      fillDark: const Color(0xFFF8AD38),
+      fillStart: 0.45,
+      fillEnd: 0.66,
       strokePath: Path()
-        ..moveTo(787, 0)
+        ..moveTo(54, 30)
         ..arcToPoint(
-          const Offset(787, 1574),
-          radius: const Radius.circular(787),
-          largeArc: true,
-          clockwise: false,
-        )
-        ..arcToPoint(
-          const Offset(787, 0),
-          radius: const Radius.circular(787),
+          const Offset(54.1, 30),
+          radius: const Radius.circular(28),
           largeArc: true,
           clockwise: false,
         )
@@ -172,141 +146,49 @@ final LogoMotionSpec modernLogoMotion = LogoMotionSpec(
       strokeEnd: 0.45,
     ),
     LogoMotionShape(
-      id: 'flag',
+      id: 'leaf',
       fillPath: Path()
-        ..moveTo(783.34, 550.29)
-        ..lineTo(413.34, 375.67)
-        ..cubicTo(388.37, 363.88, 358.57, 374.57, 346.78, 399.55)
-        ..cubicTo(343.63, 406.22, 342, 413.51, 342, 420.89)
-        ..lineTo(342, 842)
-        ..cubicTo(342, 869.62, 364.38, 892, 392, 892)
-        ..lineTo(762, 892)
-        ..cubicTo(789.62, 892, 812, 869.62, 812, 842)
-        ..lineTo(812, 595.51)
-        ..cubicTo(812, 576.16, 800.84, 558.55, 783.34, 550.29)
+        ..moveTo(52, 32)
+        ..cubicTo(53.3333, 18.6667, 62, 14.6667, 78, 20)
+        ..cubicTo(75.3333, 30.6667, 66.6667, 34.6667, 52, 32)
         ..close(),
-      fillLight: const Color(0xFF1C1C1E),
-      fillDark: const Color(0xFFF0F0F3),
-      fillStart: 0.56,
-      fillEnd: 0.76,
+      fillLight: const Color(0xFFA4CE72),
+      fillDark: const Color(0xFFA4CE72),
+      fillStart: 0.52,
+      fillEnd: 0.72,
       strokePath: Path()
-        ..moveTo(783.34, 550.29)
-        ..lineTo(413.34, 375.67)
-        ..cubicTo(388.37, 363.88, 358.57, 374.57, 346.78, 399.55)
-        ..cubicTo(343.63, 406.22, 342, 413.51, 342, 420.89)
-        ..lineTo(342, 842)
-        ..cubicTo(342, 869.62, 364.38, 892, 392, 892)
-        ..lineTo(762, 892)
-        ..cubicTo(789.62, 892, 812, 869.62, 812, 842)
-        ..lineTo(812, 595.51)
-        ..cubicTo(812, 576.16, 800.84, 558.55, 783.34, 550.29)
-        ..close(),
+        ..moveTo(52, 32)
+        ..cubicTo(53.3333, 18.6667, 62, 14.6667, 78, 20)
+        ..cubicTo(75.3333, 30.6667, 66.6667, 34.6667, 52, 32),
       strokeStart: 0.2,
-      strokeEnd: 0.5,
+      strokeEnd: 0.42,
     ),
     LogoMotionShape(
-      id: 'bar',
+      id: 'inner',
       fillPath: Path()
-        ..moveTo(392, 1022)
-        ..lineTo(1182, 1022)
+        ..moveTo(54, 37)
         ..arcToPoint(
-          const Offset(1232, 1072),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(1232, 1182)
-        ..arcToPoint(
-          const Offset(1182, 1232),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(392, 1232)
-        ..arcToPoint(
-          const Offset(342, 1182),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(342, 1072)
-        ..arcToPoint(
-          const Offset(392, 1022),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
+          const Offset(54.1, 37),
+          radius: const Radius.circular(21),
+          largeArc: true,
+          clockwise: false,
         )
         ..close(),
-      fillLight: const Color(0xFF1C1C1E),
-      fillDark: const Color(0xFFF0F0F3),
-      fillStart: 0.62,
-      fillEnd: 0.82,
+      fillLight: const Color(0xFFFFD475),
+      fillDark: const Color(0xFFFFD475),
+      fillStart: 0.64,
+      fillEnd: 0.84,
       strokePath: Path()
-        ..moveTo(392, 1022)
-        ..lineTo(1182, 1022)
+        ..moveTo(54, 37)
         ..arcToPoint(
-          const Offset(1232, 1072),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(1232, 1182)
-        ..arcToPoint(
-          const Offset(1182, 1232),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(392, 1232)
-        ..arcToPoint(
-          const Offset(342, 1182),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
-        )
-        ..lineTo(342, 1072)
-        ..arcToPoint(
-          const Offset(392, 1022),
-          radius: const Radius.circular(50),
-          largeArc: false,
-          clockwise: true,
+          const Offset(54.1, 37),
+          radius: const Radius.circular(21),
+          largeArc: true,
+          clockwise: false,
         )
         ..close(),
-      strokeStart: 0.32,
-      strokeEnd: 0.54,
-    ),
-    LogoMotionShape(
-      id: 'accent',
-      fillPath: Path()
-        ..moveTo(1013.34, 658.68)
-        ..lineTo(1203.34, 748.37)
-        ..cubicTo(1220.84, 756.63, 1232, 774.24, 1232, 793.59)
-        ..lineTo(1232, 842)
-        ..cubicTo(1232, 869.62, 1209.62, 892, 1182, 892)
-        ..lineTo(992, 892)
-        ..cubicTo(964.38, 892, 942, 869.62, 942, 842)
-        ..lineTo(942, 703.89)
-        ..cubicTo(942, 676.28, 964.38, 653.89, 992, 653.89)
-        ..cubicTo(999.38, 653.89, 1006.67, 655.53, 1013.34, 658.68)
-        ..close(),
-      fillLight: const Color(0xFFFFB003),
-      fillDark: const Color(0xFFFFB003),
-      fillStart: 0.66,
-      fillEnd: 0.86,
-      strokePath: Path()
-        ..moveTo(1013.34, 658.68)
-        ..lineTo(1203.34, 748.37)
-        ..cubicTo(1220.84, 756.63, 1232, 774.24, 1232, 793.59)
-        ..lineTo(1232, 842)
-        ..cubicTo(1232, 869.62, 1209.62, 892, 1182, 892)
-        ..lineTo(992, 892)
-        ..cubicTo(964.38, 892, 942, 869.62, 942, 842)
-        ..lineTo(942, 703.89)
-        ..cubicTo(942, 676.28, 964.38, 653.89, 992, 653.89)
-        ..cubicTo(999.38, 653.89, 1006.67, 655.53, 1013.34, 658.68)
-        ..close(),
-      strokeStart: 0.42,
-      strokeEnd: 0.58,
+      strokeStart: 0.3,
+      strokeEnd: 0.52,
     ),
   ],
 );
