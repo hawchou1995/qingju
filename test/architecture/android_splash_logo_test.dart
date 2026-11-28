@@ -30,9 +30,9 @@ void main() {
         '$res/drawable${night ? '-night' : ''}/splash_logo_$style.xml',
   ];
 
+  /// [night] 传 `''` 或 `'-night'`，直接拼在 drawable 目录名后面。
   String readSplash(String night, String style) =>
-      File('$res/drawable${night ? '-night' : ''}/splash_logo_$style.xml')
-          .readAsStringSync();
+      File('$res/drawable$night/splash_logo_$style.xml').readAsStringSync();
 
   test('日夜 × 经典/现代四份启动屏资源都被对应主题引用', () {
     for (final night in ['', '-night']) {
@@ -271,8 +271,8 @@ List<String> _commands(String d) {
     } else if (op == null) {
       fail('路径缺少起始命令: $d');
     }
-    final rel = op == op!.toLowerCase();
-    switch (op!.toUpperCase()) {
+    final rel = op == op.toLowerCase();
+    switch (op.toUpperCase()) {
       case 'M':
         {
           var x = next(), y = next();
